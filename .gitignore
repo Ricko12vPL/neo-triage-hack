@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtualenv
+.venv/
+venv/
+env/
+ENV/
+
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# Runtime data
+data/
+models/
+*.parquet
+*.db
+*.sqlite
+*.sqlite3
+
+# Claude response cache (saves budget during dev)
+claude_cache/
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend (populated by Paweł's lane)
+node_modules/
+.next/
+out/
+.vercel
