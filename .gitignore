@@ -59,3 +59,6 @@ out/
 .playwright-mcp/
 dashboard-*.png
 *.playwright-trace.zip
+
+# Prompt experiment outputs (large; runs are reproducible from script)
+/data/prompt_experiments/
