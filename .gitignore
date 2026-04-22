@@ -20,16 +20,17 @@ ENV/
 .env.local
 .env.*.local
 
-# Runtime data
-data/
-models/
+# Runtime data (root-anchored so package submodules named data/ or
+# models/ are still tracked)
+/data/
+/models/
 *.parquet
 *.db
 *.sqlite
 *.sqlite3
 
 # Claude response cache (saves budget during dev)
-claude_cache/
+/claude_cache/
 
 # Caches
 .pytest_cache/
