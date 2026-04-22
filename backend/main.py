@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import __version__
+from backend.routers import candidates
 
 app = FastAPI(
     title="neo-triage",
@@ -15,13 +16,20 @@ app = FastAPI(
     version=__version__,
 )
 
+# Accept localhost (any port) and any Vercel preview / production URL.
+# Tightened to the specific Vercel URL before submission-day demo.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tightened before production; demo only
+    allow_origin_regex=(
+        r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
+        r"|https://[a-z0-9][a-z0-9-]*\.vercel\.app"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(candidates.router)
 
 
 @app.get("/health")
