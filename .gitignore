@@ -54,3 +54,8 @@ node_modules/
 .next/
 out/
 .vercel
+
+# Playwright MCP artifacts (generated during interactive demo)
+.playwright-mcp/
+dashboard-*.png
+*.playwright-trace.zip
