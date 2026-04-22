@@ -247,7 +247,7 @@ def _build_candidate(**overrides: object) -> Candidate:
         "trksub": "TEST01",
         "ra_deg": 45.0,
         "dec_deg": 5.0,
-        "mean_magnitude": 20.0,
+        "mean_magnitude_v": 20.0,
         "rate_arcsec_min": 2.0,
         "observatory_code": "W68",
         "first_obs_datetime": datetime(2026, 4, 22, 0, 0, tzinfo=UTC),

@@ -29,7 +29,7 @@ FEATURE_NAMES: tuple[str, ...] = (
 
 def candidate_to_features(candidate: Candidate) -> np.ndarray:
     """Convert a single Candidate into the model's feature vector."""
-    mag = candidate.mean_magnitude
+    mag = candidate.mean_magnitude_v
     rate = max(candidate.rate_arcsec_min, 1e-3)
     arc = max(candidate.arc_length_minutes, 1e-3)
     return np.array(
@@ -50,7 +50,7 @@ def dataframe_to_features(df: pl.DataFrame) -> np.ndarray:
     """Vectorized feature extraction for a Polars DataFrame.
 
     Accepts a DataFrame with synthetic-data column names (note:
-    `mean_magnitude_v` rather than the Candidate field `mean_magnitude`).
+    `mean_magnitude_v` rather than the Candidate field `mean_magnitude_v`).
     """
     rate = df["rate_arcsec_min"].to_numpy().clip(min=1e-3)
     arc = df["arc_length_minutes"].to_numpy().clip(min=1e-3)

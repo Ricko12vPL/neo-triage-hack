@@ -90,7 +90,7 @@ def build_prompt(request: BriefingRequest) -> tuple[str, str]:
         f"Ecliptic latitude: {c.ecliptic_latitude_deg:+.2f}°\n\n"
         f"Tracklet:\n"
         f"- {c.n_observations} observations over {c.arc_length_minutes:.1f} min\n"
-        f"- Mean V mag: {c.mean_magnitude:.2f}\n"
+        f"- Mean V mag: {c.mean_magnitude_v:.2f}\n"
         f"- Rate of motion: {c.rate_arcsec_min:.2f} arcsec/min\n"
         f"- MPC digest2 NEO-NoID score: {c.digest2_neo_noid}/100\n\n"
         f"{prediction_block}\n\n"
