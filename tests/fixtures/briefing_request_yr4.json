@@ -1,0 +1,17 @@
+{
+  "candidate": {
+    "trksub": "P21YR4A",
+    "ra_deg": 88.527,
+    "dec_deg": 2.143,
+    "mean_magnitude": 19.5,
+    "rate_arcsec_min": 2.8,
+    "observatory_code": "W68",
+    "first_obs_datetime": "2026-04-21T22:30:00+00:00",
+    "n_observations": 4,
+    "arc_length_minutes": 15.0,
+    "digest2_neo_noid": 98,
+    "ecliptic_latitude_deg": 0.5
+  },
+  "cross_survey_context": "ATLAS covered this region 6h ago to V=19.7 and saw nothing. CSS covered 14h ago to V=20.2 and saw nothing.",
+  "include_reasoning": true
+}
