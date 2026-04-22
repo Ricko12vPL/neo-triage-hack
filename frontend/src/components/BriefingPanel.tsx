@@ -1,21 +1,45 @@
 import { useEffect, useRef, useState } from "react";
 
+export interface BriefingHistoryEntry {
+  trksub: string;
+  reasoning: string;
+  briefing: string;
+  timestamp: Date;
+  from_cache: boolean;
+}
+
 interface Props {
   reasoning: string;
   briefing: string;
   status: "idle" | "streaming" | "done" | "cache_hit" | "error";
   error: string | null;
+  history?: BriefingHistoryEntry[];
+  onHistoryRestore?: (entry: BriefingHistoryEntry) => void;
 }
 
 // Strip the "## Reasoning" header that arrives as the first streamed chunk.
-// Cached responses don't include it (split_reasoning_briefing strips it server-side),
-// but live streams emit the raw text before the marker is detected.
 function stripReasoningHeader(text: string): string {
   return text.replace(/^\s*##\s*Reasoning\s*\n?/i, "").trimStart();
 }
 
-export function BriefingPanel({ reasoning, briefing, status, error }: Props) {
+function relativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  return `${Math.floor(diffMin / 60)}h ago`;
+}
+
+export function BriefingPanel({
+  reasoning,
+  briefing,
+  status,
+  error,
+  history = [],
+  onHistoryRestore,
+}: Props) {
   const [reasoningOpen, setReasoningOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const displayReasoning = stripReasoningHeader(reasoning);
   const briefingRef = useRef<HTMLDivElement | null>(null);
   const reasoningRef = useRef<HTMLDivElement | null>(null);
@@ -30,9 +54,14 @@ export function BriefingPanel({ reasoning, briefing, status, error }: Props) {
     }
   }, [reasoning, briefing, status]);
 
+  // Close history dropdown when streaming starts
+  useEffect(() => {
+    if (status === "streaming") setHistoryOpen(false);
+  }, [status]);
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Streaming progress indicator — thin top border that animates while streaming */}
+      {/* Streaming progress indicator */}
       <div className="relative h-px bg-zinc-800">
         {status === "streaming" && (
           <div className="stream-indicator absolute left-0 top-0 h-full bg-emerald-500/60" />
@@ -51,6 +80,54 @@ export function BriefingPanel({ reasoning, briefing, status, error }: Props) {
           <span className="ml-auto rounded-sm bg-red-500/10 px-2 py-0.5 font-mono text-red-300">
             {error}
           </span>
+        )}
+
+        {/* History button — only when there's something to show */}
+        {history.length > 0 && (
+          <div className="relative ml-auto">
+            <button
+              onClick={() => setHistoryOpen((v) => !v)}
+              className={[
+                "rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors",
+                historyOpen
+                  ? "border-zinc-600 bg-zinc-800 text-zinc-200"
+                  : "border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300",
+              ].join(" ")}
+            >
+              History ({history.length})
+            </button>
+
+            {historyOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+                <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-zinc-600">
+                  Session briefings — click to restore
+                </div>
+                {[...history].reverse().map((entry) => (
+                  <button
+                    key={`${entry.trksub}-${entry.timestamp.getTime()}`}
+                    onClick={() => {
+                      onHistoryRestore?.(entry);
+                      setHistoryOpen(false);
+                    }}
+                    className="block w-full px-3 py-2 text-left transition-colors hover:bg-zinc-800"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[12px] font-medium text-zinc-200">
+                        {entry.trksub}
+                      </span>
+                      <span className="font-mono text-[10px] text-zinc-600">
+                        {relativeTime(entry.timestamp)}
+                        {entry.from_cache && " · cached"}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 line-clamp-1 text-[11px] text-zinc-500">
+                      {entry.briefing.slice(0, 80)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -142,10 +219,6 @@ function StatusBadge({
  * Tiny markdown renderer — handles only what Claude actually emits in
  * briefings: headers (`##`, `###`), bold (`**`), bullet lists, paragraphs.
  * Stays dependency-free.
- *
- * The model often emits a header followed immediately by a paragraph on
- * the next line (no blank between), so we tokenize line-by-line rather
- * than splitting on double-newlines.
  */
 function Markdown({ text }: { text: string }) {
   type Token =
@@ -253,7 +326,6 @@ function Markdown({ text }: { text: string }) {
 }
 
 function Inline({ text }: { text: string }) {
-  // Bold (**…**) — split, alternating non-bold/bold pieces.
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return (
     <>

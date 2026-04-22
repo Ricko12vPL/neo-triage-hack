@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, streamBriefing } from "./api/client";
 import type { BriefingChunk, RankedCandidate, YR4Milestone } from "./api/types";
-import { BriefingPanel } from "./components/BriefingPanel";
+import { BriefingPanel, type BriefingHistoryEntry } from "./components/BriefingPanel";
 import { CandidateList } from "./components/CandidateList";
 import { CostMeter } from "./components/CostMeter";
 import { PredictionCard } from "./components/PredictionCard";
@@ -36,6 +36,9 @@ export default function App() {
   const [status, setStatus] = useState<StreamStatus>("idle");
   const [streamError, setStreamError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Briefing history — session-scoped, last 20 entries
+  const [briefingHistory, setBriefingHistory] = useState<BriefingHistoryEntry[]>([]);
 
   // YR4 replay state
   const [yr4Timeline, setYr4Timeline] = useState<YR4Milestone[]>([]);
@@ -125,6 +128,9 @@ export default function App() {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      let accReasoning = "";
+      let accBriefing = "";
+
       try {
         for await (const chunk of streamBriefing(
           {
@@ -137,12 +143,32 @@ export default function App() {
           },
           controller.signal,
         )) {
+          if (chunk.type === "reasoning" || chunk.type === "thinking") {
+            accReasoning += chunk.content;
+          } else if (chunk.type === "text") {
+            accBriefing += chunk.content;
+          }
           handleChunk(chunk, {
             setReasoning,
             setBriefing,
             setStatus,
             setStreamError,
           });
+
+          if (chunk.type === "done" && accBriefing) {
+            setBriefingHistory((prev) => {
+              const entry: BriefingHistoryEntry = {
+                trksub,
+                reasoning: accReasoning,
+                briefing: accBriefing,
+                timestamp: new Date(),
+                from_cache: chunk.content === "cache_hit",
+              };
+              // deduplicate: remove old entry for same trksub, add new at end
+              const without = prev.filter((h) => h.trksub !== trksub);
+              return [...without, entry].slice(-20);
+            });
+          }
         }
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
@@ -239,6 +265,14 @@ export default function App() {
                   briefing={briefing}
                   status={status}
                   error={streamError}
+                  history={briefingHistory}
+                  onHistoryRestore={(entry) => {
+                    setSelected(entry.trksub);
+                    setReasoning(entry.reasoning);
+                    setBriefing(entry.briefing);
+                    setStatus(entry.from_cache ? "cache_hit" : "done");
+                    setStreamError(null);
+                  }}
                 />
               </>
             ) : (
