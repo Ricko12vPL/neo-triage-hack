@@ -12,7 +12,7 @@ type StreamStatus = "idle" | "streaming" | "done" | "cache_hit" | "error";
 
 const EVENT_LABELS: Record<string, string> = {
   first_post: "FIRST POST",
-  torino3_threshold: "TORINO 3",
+  torino3_threshold: "TORINO 5",
   global_alert: "GLOBAL ALERT",
   stand_down: "STAND DOWN",
 };
@@ -188,7 +188,7 @@ export function YR4ReplayView({ timeline }: Props) {
             >
               <div className="mb-3 flex items-center gap-3">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-red-400">
-                  ⚠ Torino Scale 3 — Global Alert
+                  ⚠ Torino Scale 5 — Global Alert
                 </span>
                 <button
                   onClick={generateAlert}
