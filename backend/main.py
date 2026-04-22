@@ -1,6 +1,11 @@
 """FastAPI entrypoint for the neo-triage backend."""
 from __future__ import annotations
 
+import logging
+import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +15,25 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 from backend import __version__  # noqa: E402
-from backend.routers import briefing, candidates, cost  # noqa: E402
+from backend.routers import briefing, candidates, cost, rank  # noqa: E402
+from backend.services.ranker import get_ranker  # noqa: E402
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Preload the ranker at startup so first /api/rank call is fast.
+
+    Training takes ~25s on 2000 synthetic samples. Skippable via
+    `NEO_TRIAGE_SKIP_RANKER_PRELOAD=1` for test boot speed.
+    """
+    if os.environ.get("NEO_TRIAGE_SKIP_RANKER_PRELOAD") != "1":
+        logger.info("Preloading Bayesian ranker (this takes ~25s)...")
+        get_ranker()
+        logger.info("Ranker ready.")
+    yield
+
 
 app = FastAPI(
     title="neo-triage",
@@ -19,6 +42,7 @@ app = FastAPI(
         "as the astronomy reasoning engine."
     ),
     version=__version__,
+    lifespan=lifespan,
 )
 
 # Accept localhost (any port) and any Vercel preview / production URL.
@@ -37,6 +61,7 @@ app.add_middleware(
 app.include_router(candidates.router)
 app.include_router(briefing.router)
 app.include_router(cost.router)
+app.include_router(rank.router)
 
 
 @app.get("/health")

@@ -51,6 +51,10 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "RET", "SIM"]
 "tests/**/*.py" = ["S101"]
 # SYSTEM_PROMPT is prose; readability of the prompt text matters more than 100-char wrapping.
 "backend/services/briefing_engine.py" = ["E501"]
+# sklearn convention: feature matrices are capital X. Don't fight the
+# ecosystem naming for the sake of the linter.
+"backend/services/ranker.py" = ["N803", "N806"]
+"scripts/**/*.py" = ["N803", "N806"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
