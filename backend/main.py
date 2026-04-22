@@ -4,8 +4,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -17,11 +19,14 @@ load_dotenv()
 
 from backend import __version__  # noqa: E402
 from backend.agent.loop import agent_loop, stop_event  # noqa: E402
+from backend.agent.state import load_state  # noqa: E402
 from backend.routers import briefing, candidates, cost, rank, replay  # noqa: E402
 from backend.routers import ws as ws_router  # noqa: E402
 from backend.services.ranker import get_ranker  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+_SERVER_START_TIME = time.monotonic()
 
 
 @asynccontextmanager
@@ -50,6 +55,24 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("Managed Agent stopped.")
 
 
+def _build_cors_regex() -> str:
+    """Build CORS origin regex from env var or defaults.
+
+    CORS_ORIGINS env var accepts comma-separated exact origins to allow
+    in addition to localhost and *.vercel.app patterns.
+    """
+    base = (
+        r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
+        r"|https://[a-z0-9][a-z0-9-]*\.vercel\.app"
+    )
+    extra = os.environ.get("CORS_ORIGINS", "")
+    if extra:
+        import re
+        escaped = "|".join(re.escape(o.strip()) for o in extra.split(",") if o.strip())
+        return f"{base}|{escaped}"
+    return base
+
+
 app = FastAPI(
     title="neo-triage",
     description=(
@@ -60,14 +83,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Accept localhost (any port) and any Vercel preview / production URL.
-# Tightened to the specific Vercel URL before submission-day demo.
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=(
-        r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
-        r"|https://[a-z0-9][a-z0-9-]*\.vercel\.app"
-    ),
+    allow_origin_regex=_build_cors_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,9 +100,17 @@ app.include_router(ws_router.router)
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
-    """Liveness probe for deployment platforms and monitoring."""
-    return {"status": "ok", "service": "neo-triage", "version": __version__}
+async def health() -> dict[str, Any]:
+    """Liveness probe for Railway health checks and monitoring."""
+    state = load_state()
+    return {
+        "status": "ok",
+        "service": "neo-triage",
+        "version": __version__,
+        "agent_running": True,
+        "agent_cycle": state.cycle_count,
+        "uptime_seconds": int(time.monotonic() - _SERVER_START_TIME),
+    }
 
 
 if __name__ == "__main__":
