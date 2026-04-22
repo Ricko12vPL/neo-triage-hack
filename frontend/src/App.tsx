@@ -265,6 +265,7 @@ export default function App() {
                   briefing={briefing}
                   status={status}
                   error={streamError}
+                  trksub={selected}
                   history={briefingHistory}
                   onHistoryRestore={(entry) => {
                     setSelected(entry.trksub);

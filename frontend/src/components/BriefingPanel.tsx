@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { toSlackMarkdown } from "../lib/slackFormat";
+import { downloadMarkdown } from "../lib/download";
 
 export interface BriefingHistoryEntry {
   trksub: string;
@@ -13,6 +15,7 @@ interface Props {
   briefing: string;
   status: "idle" | "streaming" | "done" | "cache_hit" | "error";
   error: string | null;
+  trksub?: string | null;
   history?: BriefingHistoryEntry[];
   onHistoryRestore?: (entry: BriefingHistoryEntry) => void;
 }
@@ -35,11 +38,13 @@ export function BriefingPanel({
   briefing,
   status,
   error,
+  trksub,
   history = [],
   onHistoryRestore,
 }: Props) {
   const [reasoningOpen, setReasoningOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const displayReasoning = stripReasoningHeader(reasoning);
   const briefingRef = useRef<HTMLDivElement | null>(null);
   const reasoningRef = useRef<HTMLDivElement | null>(null);
@@ -130,6 +135,43 @@ export function BriefingPanel({
           </div>
         )}
       </div>
+
+      {/* Copy/export bar — only when briefing is complete */}
+      {briefing && (status === "done" || status === "cache_hit") && (
+        <div className="flex items-center gap-1.5 border-b border-zinc-900 bg-zinc-950/30 px-4 py-1.5">
+          <span className="mr-1 text-[10px] uppercase tracking-wider text-zinc-600">
+            Export
+          </span>
+          <CopyButton
+            label={copyFeedback === "md" ? "Copied!" : "Markdown"}
+            onClick={() => {
+              navigator.clipboard.writeText(briefing).catch(() => {});
+              setCopyFeedback("md");
+              setTimeout(() => setCopyFeedback(null), 2000);
+            }}
+            active={copyFeedback === "md"}
+          />
+          <CopyButton
+            label={copyFeedback === "slack" ? "Copied!" : "Slack"}
+            onClick={() => {
+              navigator.clipboard.writeText(toSlackMarkdown(briefing)).catch(() => {});
+              setCopyFeedback("slack");
+              setTimeout(() => setCopyFeedback(null), 2000);
+            }}
+            active={copyFeedback === "slack"}
+          />
+          <CopyButton
+            label=".md"
+            onClick={() => {
+              const name = trksub
+                ? `briefing-${trksub}-${new Date().toISOString().slice(0, 16).replace("T", "T").replace(":", "")}.md`
+                : `briefing-${Date.now()}.md`;
+              downloadMarkdown(name, briefing);
+            }}
+            active={false}
+          />
+        </div>
+      )}
 
       {/* Reasoning panel — collapsible */}
       <div className="border-b border-zinc-800 bg-zinc-950/20">
@@ -322,6 +364,30 @@ function Markdown({ text }: { text: string }) {
         }
       })}
     </div>
+  );
+}
+
+function CopyButton({
+  label,
+  onClick,
+  active,
+}: {
+  label: string;
+  onClick: () => void;
+  active: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors",
+        active
+          ? "border-emerald-700 bg-emerald-900/30 text-emerald-300"
+          : "border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300",
+      ].join(" ")}
+    >
+      {label}
+    </button>
   );
 }
 
