@@ -188,7 +188,7 @@ async def test_cost_cap_stops_briefings(tmp_path: Path) -> None:
 
         with (
             patch.object(agent_loop_mod, "_collect_briefing", mock_collect),
-            patch.object(agent_loop_mod, "get_cycle_candidates", return_value=[]),
+            patch.object(agent_loop_mod, "fetch_neocp_candidates", new=AsyncMock(return_value=[])),
             patch.object(agent_loop_mod, "get_ranker", return_value=MagicMock()),
         ):
             # Run exactly 1 cycle then stop

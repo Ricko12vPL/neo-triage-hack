@@ -3,7 +3,7 @@
 Runs as a background asyncio task inside the FastAPI lifespan context.
 Every CYCLE_INTERVAL_SECONDS it:
 
-  1. Fetches candidate list from mock feed (deterministic for demo)
+  1. Fetches live candidates from MPC NEOCP (15-min cache; falls back to mock)
   2. Ranks each via the Bayesian GBM ranker
   3. Compares against previous-cycle state to detect new objects
   4. Generates Opus 4.7 briefings for new top-3 (cost-capped)
@@ -25,8 +25,8 @@ from typing import Any
 
 from backend.agent import logger as agent_logger
 from backend.agent import notifier
-from backend.agent.mock_feed import get_cycle_candidates
 from backend.agent.state import load_state, save_state
+from backend.data.neocp_fetcher import fetch_neocp_candidates
 from backend.models.schemas import BriefingRequest, Candidate, Prediction
 from backend.services import cost_tracker
 from backend.services.briefing_engine import stream_briefing
@@ -83,7 +83,7 @@ async def agent_loop() -> None:
         cycle_ts = datetime.now(UTC).isoformat()
 
         try:
-            candidates = get_cycle_candidates(cycle)
+            candidates = await fetch_neocp_candidates(limit=20)
             ranker = get_ranker()
             ranked: list[tuple[Candidate, Prediction]] = []
             for c in candidates:
