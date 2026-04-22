@@ -32,6 +32,7 @@ from math import log2
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 import polars as pl
 from sklearn.calibration import CalibratedClassifierCV  # type: ignore[import-untyped]
 from sklearn.ensemble import GradientBoostingClassifier  # type: ignore[import-untyped]
@@ -108,7 +109,7 @@ class Ranker:
     def metadata(self) -> RankerMetadata:
         return self._metadata
 
-    def predict(self, candidate_or_features: Candidate | np.ndarray) -> Prediction:
+    def predict(self, candidate_or_features: Candidate | npt.NDArray[np.float64]) -> Prediction:
         """Return a Prediction for either a Candidate or a raw feature vector."""
         if isinstance(candidate_or_features, np.ndarray):
             feats = candidate_or_features.reshape(1, -1)
@@ -150,7 +151,9 @@ class Ranker:
         )
 
 
-def _per_fold_probs(model: CalibratedClassifierCV, X: np.ndarray) -> np.ndarray:
+def _per_fold_probs(
+    model: CalibratedClassifierCV, X: npt.NDArray[np.float64]
+) -> npt.NDArray[np.float64]:
     """Return per-fold predicted probabilities, shape (n_samples, n_folds, n_classes)."""
     return np.stack(
         [cc.predict_proba(X) for cc in model.calibrated_classifiers_],

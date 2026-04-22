@@ -12,6 +12,7 @@ is a breaking change.
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 import polars as pl
 
 from backend.models.schemas import Candidate
@@ -27,7 +28,7 @@ FEATURE_NAMES: tuple[str, ...] = (
 )
 
 
-def candidate_to_features(candidate: Candidate) -> np.ndarray:
+def candidate_to_features(candidate: Candidate) -> npt.NDArray[np.float64]:
     """Convert a single Candidate into the model's feature vector."""
     mag = candidate.mean_magnitude_v
     rate = max(candidate.rate_arcsec_min, 1e-3)
@@ -46,7 +47,7 @@ def candidate_to_features(candidate: Candidate) -> np.ndarray:
     )
 
 
-def dataframe_to_features(df: pl.DataFrame) -> np.ndarray:
+def dataframe_to_features(df: pl.DataFrame) -> npt.NDArray[np.float64]:
     """Vectorized feature extraction for a Polars DataFrame.
 
     Accepts a DataFrame with synthetic-data column names (note:

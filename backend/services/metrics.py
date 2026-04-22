@@ -7,9 +7,12 @@ ranker surface clean.
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 
 
-def compute_ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> float:
+def compute_ece(
+    y_true: npt.NDArray[np.float64], y_prob: npt.NDArray[np.float64], n_bins: int = 10
+) -> float:
     """Expected Calibration Error.
 
     Partitions [0, 1] into equal-width bins, averages |accuracy - confidence|
@@ -41,14 +44,14 @@ def compute_ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> flo
     return float(ece)
 
 
-def compute_brier(y_true: np.ndarray, y_prob: np.ndarray) -> float:
+def compute_brier(y_true: npt.NDArray[np.float64], y_prob: npt.NDArray[np.float64]) -> float:
     """Brier score — mean squared error on probabilities. Lower is better."""
     y_true_arr = np.asarray(y_true, dtype=np.float64)
     y_prob_arr = np.asarray(y_prob, dtype=np.float64)
     return float(np.mean((y_prob_arr - y_true_arr) ** 2))
 
 
-def compute_recall(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+def compute_recall(y_true: npt.NDArray[np.float64], y_pred: npt.NDArray[np.float64]) -> float:
     """Binary recall — TP / (TP + FN)."""
     y_true_arr = np.asarray(y_true, dtype=bool)
     y_pred_arr = np.asarray(y_pred, dtype=bool)
@@ -60,7 +63,9 @@ def compute_recall(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 
 def compute_pha_recall(
-    y_true_neo: np.ndarray, y_pred_neo: np.ndarray, is_pha: np.ndarray
+    y_true_neo: npt.NDArray[np.float64],
+    y_pred_neo: npt.NDArray[np.float64],
+    is_pha: npt.NDArray[np.float64],
 ) -> float:
     """Recall on the hazardous (PHA) subset.
 

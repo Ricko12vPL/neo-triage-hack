@@ -55,6 +55,6 @@
     "n_val": 300,
     "n_test": 300
   },
-  "trained_at": "2026-04-22T08:00:58.918522+00:00",
+  "trained_at": "2026-04-22T08:50:41.096883+00:00",
   "note": "Trained on synthetic data approximating Vere\u0161 2025 feature distributions. Real-data integration is v1.1 scope."
 }
