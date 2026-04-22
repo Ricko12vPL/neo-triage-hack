@@ -1,4 +1,7 @@
+import { useMemo, useState } from "react";
 import type { RankedCandidate } from "../api/types";
+import { getSortFn, SortControl } from "./SortControl";
+import type { SortKey } from "./SortControl";
 
 interface Props {
   candidates: RankedCandidate[];
@@ -55,6 +58,16 @@ export function CandidateList({
   onSelect,
   loading,
 }: Props) {
+  const [sortKey, setSortKey] = useState<SortKey>("p_neo_desc");
+  const [phaOnly, setPhaOnly] = useState(false);
+
+  const displayed = useMemo(() => {
+    const filtered = phaOnly
+      ? candidates.filter((c) => c.prediction.prob_pha >= 0.1)
+      : candidates;
+    return [...filtered].sort(getSortFn(sortKey));
+  }, [candidates, sortKey, phaOnly]);
+
   return (
     <aside className="flex h-full flex-col border-r border-zinc-800 bg-zinc-950/40">
       <header className="border-b border-zinc-800 px-4 py-3">
@@ -62,9 +75,18 @@ export function CandidateList({
           NEOCP Candidates
         </h2>
         <p className="mt-0.5 text-[11px] text-zinc-600">
-          Ranked by P(NEO) · click to brief
+          {candidates.length} objects · click to brief
         </p>
       </header>
+
+      <div className="border-b border-zinc-900 px-4 py-2">
+        <SortControl
+          sortKey={sortKey}
+          onSortChange={setSortKey}
+          phaOnly={phaOnly}
+          onPhaOnlyChange={setPhaOnly}
+        />
+      </div>
 
       <div className="flex-1 overflow-y-auto">
         {loading && (
@@ -75,15 +97,16 @@ export function CandidateList({
           </ul>
         )}
 
-        {!loading && candidates.length === 0 && (
+        {!loading && displayed.length === 0 && (
           <p className="p-4 text-sm text-zinc-500">
-            No candidates in queue. Agent will auto-detect new NEOCP submissions
-            every 5 minutes.
+            {phaOnly
+              ? "No PHA candidates in queue."
+              : "No candidates in queue. Agent will auto-detect new NEOCP submissions every 5 minutes."}
           </p>
         )}
 
         <ul className="divide-y divide-zinc-900">
-          {candidates.map((c) => {
+          {displayed.map((c) => {
             const isSelected = c.trksub === selected;
             const probNeo = c.prediction.prob_neo;
             const isPha = c.prediction.prob_pha > 0.5;
