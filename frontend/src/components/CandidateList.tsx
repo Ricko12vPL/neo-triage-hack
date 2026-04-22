@@ -8,6 +8,7 @@ import {
   formatUtcTime,
   type VisibilityResult,
 } from "../lib/visibility";
+import { TorinoBadge } from "./TorinoBadge";
 
 interface Props {
   candidates: RankedCandidate[];
@@ -182,8 +183,9 @@ export function CandidateList({
                     <span className="font-mono text-[13px] text-zinc-200">
                       {c.trksub}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {vis && <VisibilityChip vis={vis} />}
+                      <TorinoBadge prob_pha={c.prediction.prob_pha} variant="inline" />
                       <span
                         className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classBadgeColor(
                           c.prediction.map_class,

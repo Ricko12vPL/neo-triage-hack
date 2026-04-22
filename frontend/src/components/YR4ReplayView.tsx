@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { streamReplayBrief, streamYr4Alert } from "../api/client";
 import type { BriefingChunk, YR4Milestone } from "../api/types";
 import { BriefingPanel } from "./BriefingPanel";
+import { computeTorinoIndicator } from "../lib/torino";
 
 interface Props {
   timeline: YR4Milestone[];
@@ -281,6 +282,22 @@ function MilestoneCard({ milestone: m }: { milestone: YR4Milestone }) {
           )}
         </div>
       </div>
+
+      {/* Torino indicator for this milestone */}
+      {(() => {
+        const torino = computeTorinoIndicator(m.prob_pha_estimate);
+        return torino.scale >= 1 ? (
+          <div className={`rounded-sm border px-2 py-1.5 text-center font-mono ${torino.colorClasses}`}>
+            <div className="text-[10px] uppercase tracking-wider opacity-70">
+              Torino Scale
+            </div>
+            <div className="text-lg font-semibold">{torino.scale}</div>
+            <div className="text-[10px] leading-tight opacity-80">
+              {torino.description}
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       <div className="text-zinc-600 italic">{m.narrative_context}</div>
     </div>

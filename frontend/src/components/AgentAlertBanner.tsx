@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AgentEventNewCandidate } from "../api/types";
+import { computeTorinoIndicator } from "../lib/torino";
 
 interface Alert {
   id: number;
@@ -39,6 +40,7 @@ export function AgentAlertBanner({ events, onSelect }: Props) {
     <div className="pointer-events-none fixed right-4 top-16 z-50 flex flex-col gap-2">
       {alerts.map((a) => {
         const isPha = a.event.prediction.prob_pha > 0.5;
+        const torino = computeTorinoIndicator(a.event.prediction.prob_pha);
         return (
           <button
             key={a.id}
@@ -60,6 +62,11 @@ export function AgentAlertBanner({ events, onSelect }: Props) {
                 className={`inline-block h-1.5 w-1.5 rounded-full ${isPha ? "bg-red-400 animate-pulse" : "bg-amber-400"}`}
               />
               New object: {a.event.candidate.trksub}
+              {torino.scale >= 2 && (
+                <span className={`rounded-sm border px-1 py-0.5 text-[9px] ${torino.colorClasses}`}>
+                  {torino.label}
+                </span>
+              )}
             </div>
             <div className="text-zinc-400">
               score {a.event.candidate.digest2_neo_noid} · P(NEO)={" "}

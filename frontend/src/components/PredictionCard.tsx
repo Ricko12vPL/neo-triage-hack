@@ -5,6 +5,7 @@ import {
   computeVisibilityTonight,
   formatUtcTime,
 } from "../lib/visibility";
+import { TorinoBadge } from "./TorinoBadge";
 
 interface Props {
   candidate: RankedCandidate;
@@ -103,7 +104,7 @@ export function PredictionCard({ candidate, observerLocation }: Props) {
         </span>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <HeroProb
           label="P(NEO)"
           value={p.prob_neo}
@@ -111,6 +112,7 @@ export function PredictionCard({ candidate, observerLocation }: Props) {
           variant="neo"
         />
         <HeroProb label="P(PHA)" value={p.prob_pha} variant="pha" />
+        <TorinoBadge prob_pha={p.prob_pha} variant="card" />
         <div className="rounded-sm border border-zinc-800 bg-zinc-900/40 px-3 py-2.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-500">
             MAP class
