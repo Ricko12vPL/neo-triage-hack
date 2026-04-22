@@ -7,21 +7,20 @@ interface Props {
 }
 
 export function AgentStatusIndicator({ agentStatus, connectionStatus }: Props) {
-  const dot =
-    connectionStatus === "open"
-      ? "bg-emerald-400"
-      : connectionStatus === "error"
-        ? "bg-red-400 animate-pulse"
-        : "bg-amber-400 animate-pulse";
+  const isActive = connectionStatus === "open";
+  const isError = connectionStatus === "error";
 
-  const label =
-    connectionStatus === "open"
-      ? agentStatus
-        ? `Agent · Cycle ${agentStatus.cycle_count}`
-        : "Agent · connecting…"
-      : connectionStatus === "error"
-        ? "Agent · error"
-        : "Agent · reconnecting";
+  const dotClass = isActive
+    ? "bg-emerald-400"
+    : isError
+      ? "bg-red-400 animate-pulse"
+      : "bg-amber-400 animate-pulse";
+
+  const cycleLabel = agentStatus
+    ? `CYCLE ${String(agentStatus.cycle_count).padStart(3, "0")}`
+    : "CYCLE ---";
+
+  const statusLabel = isActive ? "AGENT" : isError ? "ERROR" : "RECONNECT";
 
   const tooltip = agentStatus
     ? [
@@ -37,11 +36,25 @@ export function AgentStatusIndicator({ agentStatus, connectionStatus }: Props) {
 
   return (
     <div
-      className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-400"
+      className="flex items-center gap-px font-mono text-[10px] tracking-wider"
       title={tooltip}
     >
-      <span className={`inline-block h-1.5 w-1.5 rounded-full ${dot}`} />
-      <span>{label}</span>
+      <div
+        className={[
+          "flex items-center gap-1.5 border border-r-0 border-zinc-700 px-2 py-1",
+          isActive
+            ? "bg-zinc-900 text-emerald-400"
+            : isError
+              ? "bg-zinc-900 text-red-400"
+              : "bg-zinc-900 text-amber-400",
+        ].join(" ")}
+      >
+        <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotClass}`} />
+        <span>{statusLabel}</span>
+      </div>
+      <div className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-400">
+        {cycleLabel}
+      </div>
     </div>
   );
 }

@@ -9,6 +9,13 @@ interface Props {
 
 type StreamStatus = "idle" | "streaming" | "done" | "cache_hit" | "error";
 
+const EVENT_LABELS: Record<string, string> = {
+  first_post: "FIRST POST",
+  torino3_threshold: "TORINO 3",
+  global_alert: "GLOBAL ALERT",
+  stand_down: "STAND DOWN",
+};
+
 export function YR4ReplayView({ timeline }: Props) {
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [reasoning, setReasoning] = useState("");
@@ -73,16 +80,29 @@ export function YR4ReplayView({ timeline }: Props) {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Timeline scrubber */}
       <div className="border-b border-zinc-800 bg-zinc-950/60 px-6 py-4">
-        <div className="mb-3 text-[11px] uppercase tracking-wider text-zinc-500">
-          2024 YR4 — event timeline
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-[11px] uppercase tracking-wider text-zinc-500">
+            2024 YR4 — event timeline
+          </div>
+          <div className="font-mono text-[10px] text-zinc-600">
+            P(PHA): 0.10 →{" "}
+            <span className="text-red-400">0.97</span> →{" "}
+            <span className="text-zinc-500">0.04</span>
+          </div>
         </div>
         <div className="relative flex items-center gap-0">
-          {/* Connector line */}
-          <div className="absolute left-0 right-0 top-1/2 h-px bg-zinc-700" />
+          {/* Gradient connector line — green → red → slate following PHA arc */}
+          <div
+            className="absolute left-0 right-0 top-1/2 h-px"
+            style={{
+              background:
+                "linear-gradient(to right, #10b981 0%, #f59e0b 30%, #ef4444 55%, #b91c1c 70%, #52525b 100%)",
+              opacity: 0.5,
+            }}
+          />
           {timeline.map((m) => {
             const active = m.hour === selectedHour;
-            const isTorino = m.hour === 18;
-            const color =
+            const nodeColor =
               m.prob_pha_estimate >= 0.9
                 ? "border-red-500 bg-red-950"
                 : m.prob_pha_estimate >= 0.5
@@ -90,20 +110,35 @@ export function YR4ReplayView({ timeline }: Props) {
                   : m.prob_pha_estimate >= 0.3
                     ? "border-amber-500 bg-amber-950"
                     : "border-zinc-600 bg-zinc-900";
+            const eventLabel = EVENT_LABELS[m.event] ?? null;
             return (
               <button
                 key={m.hour}
                 onClick={() => selectMilestone(m.hour)}
-                className={[
-                  "relative z-10 flex flex-1 flex-col items-center gap-1.5 px-1",
-                ].join(" ")}
+                className="relative z-10 flex flex-1 flex-col items-center gap-1.5 px-1"
+                title={m.event_description}
               >
+                {eventLabel && (
+                  <span
+                    className={[
+                      "absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+                      m.event === "torino3_threshold"
+                        ? "rounded bg-red-900/80 text-red-300"
+                        : m.event === "stand_down"
+                          ? "rounded bg-zinc-800 text-zinc-400"
+                          : m.event === "global_alert"
+                            ? "rounded bg-red-900/60 text-red-400"
+                            : "text-zinc-600",
+                    ].join(" ")}
+                  >
+                    {eventLabel}
+                  </span>
+                )}
                 <div
                   className={[
                     "h-3 w-3 rounded-full border-2 transition-all duration-200",
-                    color,
+                    nodeColor,
                     active ? "scale-150 ring-2 ring-white/30" : "hover:scale-125",
-                    isTorino && !active ? "animate-pulse" : "",
                   ].join(" ")}
                 />
                 <span
@@ -114,11 +149,6 @@ export function YR4ReplayView({ timeline }: Props) {
                 >
                   +{m.hour}h
                 </span>
-                {isTorino && (
-                  <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-red-900/80 px-1.5 py-0.5 text-[9px] text-red-300">
-                    Torino 3
-                  </span>
-                )}
               </button>
             );
           })}
