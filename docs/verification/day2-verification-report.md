@@ -104,3 +104,105 @@ Day 2 budget cap was $5; spent 15% of cap. Plenty of headroom for Day 3 Managed 
 All Day 2 MUST gates are closed with verifiable evidence. The end-to-end loop works in a real browser. Cost is well under budget. Test suite is fully green. Tomorrow Day 3 can start at 08:00 Warsaw with the Managed Agent integration as the headline work.
 
 Energy management note: User reported sleep deficit Day 1. Compressed Day 2 schedule (no lunch break, no afternoon downtime) means **Day 2 should end no later than 22:00 Warsaw** — earlier than the JSON load's 01:30 hard stop. Office hours are skippable. AMA + 30-min debrief is the only mandatory evening block.
+
+---
+
+## 11. Post-Day-2 Forensic Verification
+
+**Executed at:** 2026-04-22 ~15:00 Warsaw  
+**Verifier:** Kacper (solo)  
+**Commit at verification:** `96ea3d6` (fix after forensic run)
+
+### PHASE_1 — Git forensics
+
+| Check | Result |
+|---|---|
+| Total commits on `main` | **12** (11 Day 1+2 + 1 forensic fix) |
+| Earliest commit | `14fb965` — 2026-04-21 20:39:35 +0200 ✅ post-kickoff |
+| Latest commit | `96ea3d6` — 2026-04-22 (forensic mypy fix) |
+| Hardcoded secrets scan (`git grep sk-`, `ANTHROPIC_API_KEY=`) | **0 hits** ✅ |
+| Planning workspace contamination (files from `~/Desktop/neo-triage/`) | **None** ✅ |
+
+### PHASE_2 — Reasoning workaround integrity
+
+Confirmed via `backend/services/briefing_engine.py`:
+- `_BRIEFING_MARKER_RE` regex routes chunks: everything before `## Briefing` → `type="reasoning"`, everything after → `type="text"`.
+- 24-char tail withheld to handle markers split across SSE chunks.
+- `split_reasoning_briefing()` graceful fallback to `("", full_text)` when headers missing.
+- 9 cache entries confirmed in `claude_cache/` — all are real API calls (cache_hit=False on originals, subsequent hits replay from disk).
+
+### PHASE_3 — Ranker reproducibility
+
+Re-ran `python -m scripts.train_ranker` from clean state:
+
+```
+VAL  : acc=0.987  NEO_recall=0.994  PHA_recall=1.000  ECE=0.0129  Brier_NEO=0.0048
+TEST : acc=0.973  NEO_recall=1.000  PHA_recall=1.000  ECE=0.0105  Brier_NEO=0.0011
+```
+
+Metrics reproduced exactly (seed=42, 2000 samples, temporal split). Training time: 29s.
+
+**Synthetic data separability caveat (for judges):** 1.000 recall reflects intentionally separable synthetic distributions. Actual NEOCP candidates are harder to separate — these metrics are upper bounds for the synthetic regime, not projections for live data. Real-data integration is v1.1 scope per `models/ranker-v0.1-metadata.json`.
+
+### PHASE_4 — Frontend build integrity
+
+```
+vite build: 21 modules → dist/assets/index-*.css 21.47 kB (gzip: 4.73 kB)
+            21 modules → dist/assets/index-*.js  203.94 kB (gzip: 63.97 kB)
+TypeScript: tsc -b — 0 errors
+```
+
+✅ Build reproducible. Gzip sizes within ±1 kB of Day 2 report values.
+
+### PHASE_5 — Prompt evidence
+
+`claude_cache/` holds 9 entries. Three are distinct YR4 variants confirming fresh API calls across prompt variants (SHA256 keys differ due to system prompt hash entering the cache key — NN-03 compliant).  
+`data/prompt_experiments/` directory exists with timestamped run subdirectories.
+
+### PHASE_6 — Tests + lint
+
+```
+pytest tests/           49 passed in 25s    ✅
+ruff check .            All checks passed!  ✅
+mypy backend/ --strict  Success: 19 files   ✅ (after forensic fix)
+pnpm build              0 TypeScript errors ✅
+```
+
+**Regression found and fixed:** 13 mypy `type-arg` errors in `metrics.py`, `synthetic_data.py`, `features.py`, `ranker.py` — bare `np.ndarray` missing type parameters under `--strict`. Fixed in commit `96ea3d6` by replacing with `npt.NDArray[np.float64]` throughout. Ruff E501 violations from long signatures also fixed in the same commit.
+
+### PHASE_7 — Cost ledger verification
+
+Ledger from `data/cost_ledger.json`:
+
+| Field | Value |
+|---|---|
+| `n_calls` | 11 |
+| `total_input_tokens` | 10 400 |
+| `total_output_tokens` | 7 932 |
+| `total_thinking_tokens` | 0 (Opus 4.7 adaptive — expected, see §9 note) |
+| `total_cost_usd` | $0.7509 |
+
+Formula check: `(10400 × 15 + 7932 × 75) / 1 000 000 = $0.7509` ✅ exact match (NN-07 compliant).
+
+### PHASE_8 — Docs completeness
+
+| Doc | Status |
+|---|---|
+| `docs/api-contract.md` | v0.0.2 — all 7 endpoints, `reasoning_markdown`, `mean_magnitude_v` |
+| `docs/prompt-selection.md` | 11 iterations, evaluation grid, v6 rationale |
+| `docs/day1-verification-report.md` | Complete |
+| `docs/day2-verification-report.md` | This document |
+| `models/ranker-v0.1-metadata.json` | Training config + metrics, no pickle |
+
+### PHASE_9 — Day 3 readiness
+
+| Item | Status |
+|---|---|
+| Clean `main` branch, all CI checks passing | ✅ |
+| 9 cache entries covering YR4 and P21h4Dd | ✅ (Day 3 demos will hit cache) |
+| `$500 - $0.7509 = $499.25` budget remaining | ✅ |
+| Outstanding: `total_thinking_tokens=0` in adaptive mode | ⚠️ document in `cost_tracker.py` docstring |
+| Outstanding: prompt harness only scores YR4 today | ⚠️ extend to all 10 candidates Day 3 |
+| Managed Agent integration block | Scheduled Day 3 08:00 Warsaw |
+
+**Forensic verdict: GREEN.** One regression (mypy type-arg errors) found and fixed in commit `96ea3d6`. All other checks nominal. Day 3 GO confirmed.
