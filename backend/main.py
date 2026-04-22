@@ -45,7 +45,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     stop_event.set()
     try:
         await asyncio.wait_for(agent_task, timeout=10.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         agent_task.cancel()
     logger.info("Managed Agent stopped.")
 

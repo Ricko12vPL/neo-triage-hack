@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+from typing import Any
 
 from fastapi import WebSocket
 
@@ -25,7 +26,7 @@ def connection_count() -> int:
     return len(_connections)
 
 
-async def broadcast(event: dict) -> None:
+async def broadcast(event: dict[str, Any]) -> None:
     """Send event JSON to all active WebSocket connections.
 
     Stale connections are silently removed — a dropped client

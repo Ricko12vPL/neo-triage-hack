@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -43,7 +44,7 @@ def _sample_class_counts(n: int, rng: np.random.Generator) -> dict[str, int]:
     return dict(zip(CLASS_LABELS, counts, strict=True))
 
 
-def _sample_neo(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[np.float64]]:
+def _sample_neo(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[Any]]:
     return {
         "digest2_neo_noid": np.clip(
             rng.beta(6.0, 1.5, n) * 40 + 60, 60, 100
@@ -56,7 +57,7 @@ def _sample_neo(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[np.fl
     }
 
 
-def _sample_mba(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[np.float64]]:
+def _sample_mba(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[Any]]:
     return {
         "digest2_neo_noid": np.clip(
             rng.beta(2.0, 2.0, n) * 60 + 20, 20, 80
@@ -69,7 +70,7 @@ def _sample_mba(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[np.fl
     }
 
 
-def _sample_artifact(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[np.float64]]:
+def _sample_artifact(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[Any]]:
     # Rate is bimodal — streak artifacts (very fast) or cosmic-ray/hot-pixel
     # pairings (near-zero motion).
     rate_mode_fast = rng.random(n) < 0.5
@@ -86,7 +87,7 @@ def _sample_artifact(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[
     }
 
 
-def _sample_comet(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[np.float64]]:
+def _sample_comet(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[Any]]:
     return {
         "digest2_neo_noid": np.clip(rng.integers(30, 85, n), 30, 85),
         "rate_arcsec_min": np.clip(rng.lognormal(np.log(0.6), 0.5, n), 0.1, 2.5),
@@ -97,7 +98,7 @@ def _sample_comet(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[np.
     }
 
 
-def _sample_unconfirmed(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[np.float64]]:
+def _sample_unconfirmed(n: int, rng: np.random.Generator) -> dict[str, npt.NDArray[Any]]:
     return {
         "digest2_neo_noid": rng.integers(35, 75, n),
         "rate_arcsec_min": np.clip(rng.lognormal(np.log(1.0), 0.8, n), 0.1, 4.0),

@@ -21,6 +21,7 @@ import contextlib
 import logging
 import time
 from datetime import UTC, datetime
+from typing import Any
 
 from backend.agent import logger as agent_logger
 from backend.agent import notifier
@@ -96,7 +97,7 @@ async def agent_loop() -> None:
                 (c, p) for c, p in ranked if c.trksub not in state.prev_trksubs
             ]
 
-            briefings_done: list[dict] = []
+            briefings_done: list[dict[str, Any]] = []
             session_cost_before = state.session_cost_usd
 
             for candidate, prediction in new_pairs[:MAX_BRIEFINGS_PER_CYCLE]:

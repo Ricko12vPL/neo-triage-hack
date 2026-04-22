@@ -1,13 +1,12 @@
 """Tests for YR4 replay mode — timeline data and endpoints."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
 
+from backend.data.yr4_replay import get_closest_milestone, get_milestone, get_timeline
 from backend.main import app
-from backend.data.yr4_replay import get_timeline, get_milestone, get_closest_milestone
 
 client = TestClient(app)
 
@@ -153,7 +152,10 @@ def test_alert_bypasses_cache() -> None:
 
     with (
         patch("backend.routers.replay.generate_yr4_alert", mock_alert),
-        patch("backend.services.claude_cache.get", side_effect=lambda _: cache_get_called.append(1) or None),
+        patch(
+            "backend.services.claude_cache.get",
+            side_effect=lambda _: cache_get_called.append(1) or None,
+        ),
     ):
         client.post("/api/replay/yr4/alert")
 

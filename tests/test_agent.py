@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
-import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -25,8 +23,9 @@ def test_state_load_missing_file(tmp_path: Path) -> None:
 
 def test_state_save_load_roundtrip(tmp_path: Path) -> None:
     with patch("backend.agent.state.STATE_PATH", tmp_path / "agent_state.json"):
-        from backend.agent.state import AgentState, load_state, save_state
         from datetime import UTC, datetime
+
+        from backend.agent.state import AgentState, load_state, save_state
 
         s = AgentState(
             prev_trksubs={"A001", "B002"},
@@ -166,7 +165,6 @@ def test_mock_feed_deterministic() -> None:
 @pytest.mark.asyncio
 async def test_cost_cap_stops_briefings(tmp_path: Path) -> None:
     """Agent loop skips Claude calls once session_cost_usd >= COST_CAP_USD."""
-    import importlib
 
     with (
         patch("backend.agent.state.STATE_PATH", tmp_path / "state.json"),

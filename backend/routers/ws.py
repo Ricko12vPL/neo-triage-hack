@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
@@ -62,6 +63,6 @@ async def agent_status() -> AgentStatus:
 
 
 @router.get("/api/agent/log")
-async def agent_log(n: int = 50) -> list[dict]:
+async def agent_log(n: int = 50) -> list[dict[str, Any]]:
     """Return the last `n` agent cycle log entries."""
     return agent_logger.read_recent(n)

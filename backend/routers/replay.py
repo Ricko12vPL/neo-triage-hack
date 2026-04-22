@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -66,15 +67,15 @@ async def _sse_stream(gen: AsyncIterator[BriefingChunk]) -> AsyncIterator[str]:
         yield f"data: {chunk.model_dump_json()}\n\n"
 
 
-@router.get("/yr4", response_model=list[dict])
-async def list_timeline() -> list[dict]:
+@router.get("/yr4", response_model=list[dict[str, Any]])
+async def list_timeline() -> list[dict[str, Any]]:
     """Return the full 2024 YR4 event timeline (7 milestones)."""
     from dataclasses import asdict
     return [asdict(m) for m in get_timeline()]
 
 
-@router.get("/yr4/{hour}", response_model=dict)
-async def get_milestone_endpoint(hour: int) -> dict:
+@router.get("/yr4/{hour}", response_model=dict[str, Any])
+async def get_milestone_endpoint(hour: int) -> dict[str, Any]:
     """Return a specific milestone by exact hour. 404 if not in timeline."""
     from dataclasses import asdict
     m = get_milestone(hour)

@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import math
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import httpx
 
@@ -78,7 +79,7 @@ def _parse_obs_datetime(date_str: str) -> datetime:
 # NEOCP list parser
 # ---------------------------------------------------------------------------
 
-def _parse_neocp_line(line: str) -> dict | None:
+def _parse_neocp_line(line: str) -> dict[str, Any] | None:
     """Parse one line of neocp.txt into a partial candidate dict.
 
     Format (space-delimited, last 4 tokens are NObs, Arc, H, not_seen):

@@ -18,9 +18,10 @@ import os
 import re
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from anthropic import AsyncAnthropic
+from anthropic.types import OutputConfigParam
 
 from backend.models.schemas import (
     BriefingChunk,
@@ -31,7 +32,7 @@ from backend.services import claude_cache, cost_tracker
 
 MODEL_VERSION = "claude-opus-4-7"
 MAX_OUTPUT_TOKENS = 4000
-DEFAULT_THINKING_EFFORT = "high"  # one of: minimal, low, medium, high
+DEFAULT_THINKING_EFFORT: Literal["low", "medium", "high", "xhigh", "max"] = "high"
 
 REASONING_HEADER = "## Reasoning"
 BRIEFING_HEADER = "## Briefing"
@@ -352,7 +353,7 @@ async def generate_yr4_alert(
             system=_YR4_ALERT_SYSTEM,
             messages=[{"role": "user", "content": _YR4_ALERT_USER}],
             thinking={"type": "adaptive"},
-            output_config={"effort": DEFAULT_THINKING_EFFORT},
+            output_config=OutputConfigParam(effort=DEFAULT_THINKING_EFFORT),
         ) as stream:
             async for event in stream:
                 if getattr(event, "type", None) != "content_block_delta":

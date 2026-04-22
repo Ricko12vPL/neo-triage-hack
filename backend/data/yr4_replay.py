@@ -98,7 +98,7 @@ YR4_TIMELINE: list[YR4Milestone] = [
     YR4Milestone(
         hour=18,
         n_observations=28,
-        arc_length_minutes=1152,
+        arc_length_minutes=1080,
         mean_magnitude_v=20.8,
         rate_arcsec_min=3.8,
         digest2_neo_noid=98,
@@ -112,7 +112,7 @@ YR4_TIMELINE: list[YR4Milestone] = [
             "Possible impact December 2032. Global alert pending."
         ),
         narrative_context=(
-            "This is the moment. 28 observations over 19.2 hours from 7 observatories. "
+            "This is the moment. 28 observations over 18 hours from 7 observatories. "
             "Orbit solution converged enough to place several impact solutions in the "
             "remaining uncertainty volume. P(PHA)=0.91 is not a rounding error. "
             "The follow-up network needs this now."
