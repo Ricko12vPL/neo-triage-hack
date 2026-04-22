@@ -63,8 +63,8 @@
 *Scrub from +0h slowly to +12h, clicking each node.*
 > "Hour zero — first posting. P(PHA) zero-point-one. Hours six, twelve — more observations, arc grows, probability climbs."
 
-*Click +18h (Torino 3 node).*
-> "Hour eighteen. P(PHA) zero-point-nine-one. Torino Scale 3. Twenty-eight observations from seven observatories. Claude updates its assessment at every step."
+*Click +18h (Torino 5 node).*
+> "Hour eighteen. P(PHA) zero-point-nine-one. Torino 5 — threatening. Twenty-eight observations from seven observatories. Claude updates its assessment at every step."
 
 *Let h+18 briefing stream for 5 seconds.*
 
@@ -74,7 +74,7 @@
 
 **Visual:** Alert panel visible at bottom of h+18 view. Pulsing "GENERATE ALERT NOW" button.  
 **Say:**
-> "When Torino 3 is crossed — this button. Every press generates a fresh alert from Opus 4.7. Never cached. Never the same twice."
+> "When the threat level peaks — this button. Every press generates a fresh alert from Opus 4.7. Never cached. Never the same twice."
 
 *Click "GENERATE ALERT NOW". Alert streams.*
 

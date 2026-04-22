@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import type { RankedCandidate } from "../api/types";
-import { getSortFn, SortControl } from "./SortControl";
-import type { SortKey } from "./SortControl";
+import { SortControl } from "./SortControl";
+import { getSortFn } from "../lib/sort";
+import type { SortKey } from "../lib/sort";
 import type { ObserverLocation } from "../hooks/useObserverLocation";
 import {
   computeVisibilityTonight,

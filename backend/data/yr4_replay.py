@@ -108,7 +108,7 @@ YR4_TIMELINE: list[YR4Milestone] = [
         is_pha=True,
         event="torino3_threshold",
         event_description=(
-            "Torino Scale crosses 3. Impact probability 2.4%. "
+            "Threat indicator reaches Torino 5 — P(PHA)=0.91. "
             "Possible impact December 2032. Global alert pending."
         ),
         narrative_context=(

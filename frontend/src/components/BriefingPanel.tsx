@@ -43,7 +43,8 @@ export function BriefingPanel({
   onHistoryRestore,
 }: Props) {
   const [reasoningOpen, setReasoningOpen] = useState(true);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpenUser, setHistoryOpenUser] = useState(false);
+  const historyOpen = historyOpenUser && status !== "streaming";
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const displayReasoning = stripReasoningHeader(reasoning);
   const briefingRef = useRef<HTMLDivElement | null>(null);
@@ -58,11 +59,6 @@ export function BriefingPanel({
       });
     }
   }, [reasoning, briefing, status]);
-
-  // Close history dropdown when streaming starts
-  useEffect(() => {
-    if (status === "streaming") setHistoryOpen(false);
-  }, [status]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -91,7 +87,7 @@ export function BriefingPanel({
         {history.length > 0 && (
           <div className="relative ml-auto">
             <button
-              onClick={() => setHistoryOpen((v) => !v)}
+              onClick={() => setHistoryOpenUser((v) => !v)}
               className={[
                 "rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors",
                 historyOpen
@@ -112,7 +108,7 @@ export function BriefingPanel({
                     key={`${entry.trksub}-${entry.timestamp.getTime()}`}
                     onClick={() => {
                       onHistoryRestore?.(entry);
-                      setHistoryOpen(false);
+                      setHistoryOpenUser(false);
                     }}
                     className="block w-full px-3 py-2 text-left transition-colors hover:bg-zinc-800"
                   >
