@@ -22,11 +22,31 @@ function classBadgeColor(cls: string): string {
   }
 }
 
-function probBar(prob: number): string {
+function probBarColor(prob: number): string {
   if (prob >= 0.8) return "bg-emerald-500";
   if (prob >= 0.5) return "bg-amber-500";
   if (prob >= 0.2) return "bg-orange-500";
   return "bg-zinc-700";
+}
+
+function SkeletonRow() {
+  return (
+    <li className="border-b border-zinc-900 px-4 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="skeleton h-3 w-20" />
+        <div className="skeleton h-3 w-10" />
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <div className="skeleton h-1.5 flex-1" />
+        <div className="skeleton h-3 w-10" />
+      </div>
+      <div className="mt-2 flex gap-4">
+        <div className="skeleton h-2.5 w-10" />
+        <div className="skeleton h-2.5 w-10" />
+        <div className="skeleton h-2.5 w-10" />
+      </div>
+    </li>
+  );
 }
 
 export function CandidateList({
@@ -48,33 +68,43 @@ export function CandidateList({
 
       <div className="flex-1 overflow-y-auto">
         {loading && (
-          <p className="p-4 text-sm text-zinc-500">Loading candidates…</p>
+          <ul>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </ul>
         )}
 
         {!loading && candidates.length === 0 && (
-          <p className="p-4 text-sm text-zinc-500">No candidates returned.</p>
+          <p className="p-4 text-sm text-zinc-500">
+            No candidates in queue. Agent will auto-detect new NEOCP submissions
+            every 5 minutes.
+          </p>
         )}
 
         <ul className="divide-y divide-zinc-900">
           {candidates.map((c) => {
             const isSelected = c.trksub === selected;
             const probNeo = c.prediction.prob_neo;
+            const isPha = c.prediction.prob_pha > 0.5;
             return (
               <li key={c.trksub}>
                 <button
                   onClick={() => onSelect(c.trksub)}
-                  className={`block w-full px-4 py-3 text-left transition-colors ${
+                  className={[
+                    "block w-full px-4 py-2.5 text-left transition-colors",
+                    "border-l-2",
                     isSelected
-                      ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/30"
-                      : "hover:bg-zinc-900/60"
-                  }`}
+                      ? "border-l-emerald-500 bg-emerald-500/8"
+                      : "border-l-transparent hover:border-l-zinc-600 hover:bg-zinc-900/60",
+                  ].join(" ")}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-sm text-zinc-200">
+                    <span className="font-mono text-[13px] text-zinc-200">
                       {c.trksub}
                     </span>
                     <span
-                      className={`rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classBadgeColor(
+                      className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classBadgeColor(
                         c.prediction.map_class,
                       )}`}
                     >
@@ -82,27 +112,42 @@ export function CandidateList({
                     </span>
                   </div>
 
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-800">
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <div className="h-1 flex-1 overflow-hidden bg-zinc-800">
                       <div
-                        className={`h-full ${probBar(probNeo)}`}
+                        className={`h-full transition-all ${probBarColor(probNeo)}`}
                         style={{ width: `${(probNeo * 100).toFixed(1)}%` }}
                       />
                     </div>
-                    <span className="w-12 text-right font-mono text-[11px] text-zinc-400">
+                    <span className="w-10 text-right font-mono text-[11px] text-zinc-400">
                       {probNeo.toFixed(2)}
                     </span>
                   </div>
 
-                  <div className="mt-2 grid grid-cols-3 gap-x-2 text-[10px] text-zinc-500">
+                  <div className="mt-1.5 grid grid-cols-3 gap-x-2 text-[10px] text-zinc-500">
                     <span>
-                      d2 <span className="text-zinc-300">{c.digest2_neo_noid}</span>
+                      d2{" "}
+                      <span className="text-zinc-300">{c.digest2_neo_noid}</span>
                     </span>
                     <span>
-                      V <span className="text-zinc-300">{c.mean_magnitude_v.toFixed(1)}</span>
+                      V{" "}
+                      <span className="text-zinc-300">
+                        {c.mean_magnitude_v.toFixed(1)}
+                      </span>
                     </span>
                     <span>
-                      r <span className="text-zinc-300">{c.rate_arcsec_min.toFixed(2)}″</span>
+                      {isPha ? (
+                        <span className="font-semibold text-red-400">
+                          PHA {c.prediction.prob_pha.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span>
+                          r{" "}
+                          <span className="text-zinc-300">
+                            {c.rate_arcsec_min.toFixed(2)}″
+                          </span>
+                        </span>
+                      )}
                     </span>
                   </div>
                 </button>

@@ -32,13 +32,23 @@ export function BriefingPanel({ reasoning, briefing, status, error }: Props) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Streaming progress indicator — thin top border that animates while streaming */}
+      <div className="relative h-px bg-zinc-800">
+        {status === "streaming" && (
+          <div className="stream-indicator absolute left-0 top-0 h-full bg-emerald-500/60" />
+        )}
+      </div>
+
       <div className="flex items-center gap-3 border-b border-zinc-800 bg-zinc-950/40 px-4 py-2 text-[11px]">
         <StatusBadge status={status} />
-        <span className="text-zinc-500">
+        <span className="font-mono text-zinc-500">
           claude-opus-4-7 · adaptive thinking
         </span>
+        {status === "cache_hit" && (
+          <span className="font-mono text-sky-400">cache hit · $0.000</span>
+        )}
         {error && (
-          <span className="ml-auto rounded bg-red-500/10 px-2 py-0.5 font-mono text-red-300">
+          <span className="ml-auto rounded-sm bg-red-500/10 px-2 py-0.5 font-mono text-red-300">
             {error}
           </span>
         )}
