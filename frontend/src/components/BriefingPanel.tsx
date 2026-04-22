@@ -7,8 +7,16 @@ interface Props {
   error: string | null;
 }
 
+// Strip the "## Reasoning" header that arrives as the first streamed chunk.
+// Cached responses don't include it (split_reasoning_briefing strips it server-side),
+// but live streams emit the raw text before the marker is detected.
+function stripReasoningHeader(text: string): string {
+  return text.replace(/^\s*##\s*Reasoning\s*\n?/i, "").trimStart();
+}
+
 export function BriefingPanel({ reasoning, briefing, status, error }: Props) {
   const [reasoningOpen, setReasoningOpen] = useState(true);
+  const displayReasoning = stripReasoningHeader(reasoning);
   const briefingRef = useRef<HTMLDivElement | null>(null);
   const reasoningRef = useRef<HTMLDivElement | null>(null);
 
@@ -52,7 +60,7 @@ export function BriefingPanel({ reasoning, briefing, status, error }: Props) {
           Claude's reasoning
           {reasoning && (
             <span className="ml-2 normal-case text-zinc-600">
-              ({reasoning.split(/\s+/).filter(Boolean).length} words)
+              ({displayReasoning.split(/\s+/).filter(Boolean).length} words)
             </span>
           )}
         </button>
@@ -61,8 +69,8 @@ export function BriefingPanel({ reasoning, briefing, status, error }: Props) {
             ref={reasoningRef}
             className="max-h-48 overflow-y-auto px-4 pb-3 font-mono text-[12px] leading-relaxed text-zinc-400"
           >
-            {reasoning ? (
-              <pre className="whitespace-pre-wrap">{reasoning}</pre>
+            {displayReasoning ? (
+              <pre className="whitespace-pre-wrap">{displayReasoning}</pre>
             ) : (
               <p className="text-zinc-600 italic">
                 {status === "streaming"

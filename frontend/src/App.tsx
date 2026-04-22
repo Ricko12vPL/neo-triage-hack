@@ -22,10 +22,9 @@ export default function App() {
   const [streamError, setStreamError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Initial candidate load
+  // Initial candidate load — loading starts as true via useState(true)
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     api
       .ranked(10)
       .then((items) => {
@@ -147,7 +146,7 @@ export default function App() {
 }
 
 function stripPrediction(candidate: RankedCandidate) {
-  const { prediction: _prediction, ...bare } = candidate;
+  const { prediction: _, ...bare } = candidate;
   return bare;
 }
 

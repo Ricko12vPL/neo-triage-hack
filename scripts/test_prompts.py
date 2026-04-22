@@ -16,6 +16,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -108,7 +109,8 @@ def _evaluate_briefing(reasoning: str, briefing: str) -> dict[str, object]:
     text = (reasoning + " " + briefing).lower()
     forbidden = ["exciting", "fascinating", "amazing", "incredible", "remarkable",
                  "unprecedented", "groundbreaking", "cutting-edge"]
-    has_forbidden = [w for w in forbidden if w in text]
+    # Use word-boundary matching: "unremarkable" must not flag "remarkable"
+    has_forbidden = [w for w in forbidden if re.search(rf"\b{re.escape(w)}\b", text)]
 
     cites_numbers = any(
         token in briefing

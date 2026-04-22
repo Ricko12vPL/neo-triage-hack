@@ -13,7 +13,7 @@ export function CostMeter() {
       try {
         const c = await api.cost();
         if (!cancelled) setCost(c);
-      } catch (_err) {
+      } catch {
         // Silent — cost meter is informational, not blocking.
       }
     };
