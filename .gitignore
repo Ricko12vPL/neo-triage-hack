@@ -19,6 +19,8 @@ ENV/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.staging
 
 # Runtime data (root-anchored so package submodules named data/ or
 # models/ are still tracked)
