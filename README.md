@@ -24,15 +24,44 @@ When the Vera C. Rubin Observatory enters full operations, it will flood the pla
 
 ## Running locally
 
+### One-time setup
+
 ```bash
-# Backend
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env  # fill in ANTHROPIC_API_KEY and NASA_API_KEY
+cp .env.example .env   # fill in ANTHROPIC_API_KEY and NASA_API_KEY
+```
 
+### Every session
+
+Open a new terminal → activate the venv → run the backend:
+
+```bash
+source .venv/bin/activate
 uvicorn backend.main:app --reload
 # → http://localhost:8000/health
+```
+
+### Tests
+
+```bash
+pytest
+```
+
+### About the virtual environment
+
+`.venv/` is a local Python virtual environment — interpreter plus installed packages, scoped to this repo. It is listed in `.gitignore` and never pushed. Two things worth knowing:
+
+1. **It is per-machine and per-path.** If you move or rename this repo, the venv breaks (it hardcodes absolute paths in shebangs and activation scripts).
+2. **Nothing in the repo depends on it existing.** The code, tests, and deployment manifests are what matters. Recreating the venv from `pyproject.toml` takes roughly two minutes.
+
+If the venv ever misbehaves (moved repo, corrupted install, Python version change), just rebuild it:
+
+```bash
+rm -rf .venv
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
 ## License
