@@ -1,6 +1,7 @@
 """FastAPI entrypoint for the neo-triage backend."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import AsyncIterator
@@ -15,7 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 from backend import __version__  # noqa: E402
+from backend.agent.loop import agent_loop, stop_event  # noqa: E402
 from backend.routers import briefing, candidates, cost, rank  # noqa: E402
+from backend.routers import ws as ws_router  # noqa: E402
 from backend.services.ranker import get_ranker  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -23,16 +26,28 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Preload the ranker at startup so first /api/rank call is fast.
+    """Preload ranker, then start the Managed Agent background loop.
 
-    Training takes ~25s on 2000 synthetic samples. Skippable via
-    `NEO_TRIAGE_SKIP_RANKER_PRELOAD=1` for test boot speed.
+    Ranker training takes ~25s on 2000 synthetic samples; skippable
+    via NEO_TRIAGE_SKIP_RANKER_PRELOAD=1 for fast test boots.
+    The agent loop runs for the lifetime of the server process.
     """
     if os.environ.get("NEO_TRIAGE_SKIP_RANKER_PRELOAD") != "1":
         logger.info("Preloading Bayesian ranker (this takes ~25s)...")
         get_ranker()
         logger.info("Ranker ready.")
+
+    agent_task = asyncio.create_task(agent_loop(), name="managed-agent")
+    logger.info("Managed Agent started.")
+
     yield
+
+    stop_event.set()
+    try:
+        await asyncio.wait_for(agent_task, timeout=10.0)
+    except asyncio.TimeoutError:
+        agent_task.cancel()
+    logger.info("Managed Agent stopped.")
 
 
 app = FastAPI(
@@ -62,6 +77,7 @@ app.include_router(candidates.router)
 app.include_router(briefing.router)
 app.include_router(cost.router)
 app.include_router(rank.router)
+app.include_router(ws_router.router)
 
 
 @app.get("/health")
