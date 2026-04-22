@@ -1,0 +1,60 @@
+{
+  "model_version": "bayesian_v0.1_gbm_isotonic",
+  "feature_names": [
+    "digest2_neo_noid",
+    "log_rate_arcsec_min",
+    "mean_magnitude_v",
+    "log_arc_length_minutes",
+    "n_observations",
+    "abs_ecliptic_latitude_deg",
+    "log_rate_to_mag_ratio"
+  ],
+  "class_labels": [
+    "NEO",
+    "MBA",
+    "ARTIFACT",
+    "COMET",
+    "UNCONFIRMED"
+  ],
+  "training_config": {
+    "n_samples": 2000,
+    "seed": 42,
+    "span_days": 365,
+    "base_model": "GradientBoostingClassifier",
+    "base_model_kwargs": {
+      "n_estimators": 200,
+      "max_depth": 4,
+      "learning_rate": 0.05,
+      "random_state": 42,
+      "subsample": 0.9
+    },
+    "calibration_cv_folds": 5,
+    "calibration_method": "isotonic",
+    "train_fraction": 0.7,
+    "val_fraction": 0.15,
+    "test_fraction": 0.15,
+    "split_strategy": "temporal"
+  },
+  "metrics_val": {
+    "accuracy": 0.9866666666666667,
+    "neo_recall": 0.9939024390243902,
+    "pha_recall": 1.0,
+    "ece": 0.012932927955520973,
+    "brier_neo": 0.004844360303829731,
+    "n_train": 1400,
+    "n_val": 300,
+    "n_test": 300
+  },
+  "metrics_test": {
+    "accuracy": 0.9733333333333334,
+    "neo_recall": 1.0,
+    "pha_recall": 1.0,
+    "ece": 0.010534583147776989,
+    "brier_neo": 0.0010600891835653257,
+    "n_train": 1400,
+    "n_val": 300,
+    "n_test": 300
+  },
+  "trained_at": "2026-04-22T08:00:58.918522+00:00",
+  "note": "Trained on synthetic data approximating Vere\u0161 2025 feature distributions. Real-data integration is v1.1 scope."
+}
