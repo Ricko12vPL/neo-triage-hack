@@ -9,13 +9,13 @@ observations and should not be confused with live NEOCP data.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from backend.models.schemas import Candidate
 
 
 def _utc(year: int, month: int, day: int, hour: int, minute: int) -> datetime:
-    return datetime(year, month, day, hour, minute, tzinfo=timezone.utc)
+    return datetime(year, month, day, hour, minute, tzinfo=UTC)
 
 
 MOCK_CANDIDATES: list[Candidate] = [

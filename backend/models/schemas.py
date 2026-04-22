@@ -11,7 +11,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 ClassLabel = Literal["NEO", "MBA", "COMET", "ARTIFACT", "UNCONFIRMED"]
 """The five mutually exclusive disposition classes the classifier can assign."""
 

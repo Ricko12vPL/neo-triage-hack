@@ -1,11 +1,16 @@
 """FastAPI entrypoint for the neo-triage backend."""
 from __future__ import annotations
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend import __version__
-from backend.routers import candidates
+# Load .env before importing modules that read environment variables
+# (e.g. briefing_engine reads ANTHROPIC_API_KEY at request time).
+load_dotenv()
+
+from backend import __version__  # noqa: E402
+from backend.routers import briefing, candidates, cost  # noqa: E402
 
 app = FastAPI(
     title="neo-triage",
@@ -30,6 +35,8 @@ app.add_middleware(
 )
 
 app.include_router(candidates.router)
+app.include_router(briefing.router)
+app.include_router(cost.router)
 
 
 @app.get("/health")
