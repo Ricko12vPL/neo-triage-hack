@@ -1,7 +1,14 @@
+import { useMemo } from "react";
 import type { Prediction, RankedCandidate } from "../api/types";
+import type { ObserverLocation } from "../hooks/useObserverLocation";
+import {
+  computeVisibilityTonight,
+  formatUtcTime,
+} from "../lib/visibility";
 
 interface Props {
   candidate: RankedCandidate;
+  observerLocation: ObserverLocation;
 }
 
 function HeroProb({
@@ -44,9 +51,40 @@ function HeroProb({
   );
 }
 
-export function PredictionCard({ candidate }: Props) {
+export function PredictionCard({ candidate, observerLocation }: Props) {
   const c = candidate;
   const p: Prediction = candidate.prediction;
+
+  const vis = useMemo(
+    () =>
+      computeVisibilityTonight(
+        c.ra_deg,
+        c.dec_deg,
+        observerLocation.latitude_deg,
+        observerLocation.longitude_deg,
+        new Date(),
+      ),
+    [c.ra_deg, c.dec_deg, observerLocation],
+  );
+
+  const obsStatusColor =
+    vis.status === "visible_now"
+      ? "text-emerald-400"
+      : vis.status === "sets_soon"
+        ? "text-amber-400"
+        : vis.status === "rises_later"
+          ? "text-zinc-400"
+          : "text-zinc-600";
+
+  const obsStatusLabel =
+    vis.status === "visible_now"
+      ? `VISIBLE NOW · ${vis.altitude_deg_now.toFixed(0)}° alt`
+      : vis.status === "sets_soon"
+        ? `SETS SOON · ${vis.altitude_deg_now.toFixed(0)}° alt`
+        : vis.status === "rises_later"
+          ? "BELOW HORIZON — RISES LATER"
+          : "BELOW HORIZON TONIGHT";
+
   return (
     <section className="border-b border-zinc-800 bg-zinc-950/40 px-4 py-3">
       <header className="mb-3 flex items-baseline justify-between gap-3">
@@ -95,6 +133,37 @@ export function PredictionCard({ candidate }: Props) {
             d2={c.digest2_neo_noid} · {c.rate_arcsec_min.toFixed(2)}″/min
           </div>
         </div>
+      </div>
+
+      {/* Observability section */}
+      <div className="mt-2 rounded-sm border border-zinc-800/60 bg-zinc-900/20 px-3 py-2">
+        <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-600">
+          Observability · {observerLocation.label}
+        </div>
+        <div className={`font-mono text-[11px] font-medium ${obsStatusColor}`}>
+          {obsStatusLabel}
+        </div>
+        <div className="mt-1 grid grid-cols-3 gap-x-4 font-mono text-[10px] text-zinc-500">
+          <span>
+            Rise{" "}
+            <span className="text-zinc-400">{formatUtcTime(vis.rise_utc)}</span>
+          </span>
+          <span>
+            Set{" "}
+            <span className="text-zinc-400">{formatUtcTime(vis.set_utc)}</span>
+          </span>
+          <span>
+            Max{" "}
+            <span className="text-zinc-400">
+              {vis.max_altitude_deg_tonight.toFixed(0)}°
+            </span>
+          </span>
+        </div>
+        {vis.best_observing_time_utc && (
+          <div className="mt-0.5 font-mono text-[10px] text-zinc-600">
+            Best window: {formatUtcTime(vis.best_observing_time_utc)}
+          </div>
+        )}
       </div>
     </section>
   );

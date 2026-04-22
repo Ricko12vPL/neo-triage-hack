@@ -2,12 +2,19 @@ import { useMemo, useState } from "react";
 import type { RankedCandidate } from "../api/types";
 import { getSortFn, SortControl } from "./SortControl";
 import type { SortKey } from "./SortControl";
+import type { ObserverLocation } from "../hooks/useObserverLocation";
+import {
+  computeVisibilityTonight,
+  formatUtcTime,
+  type VisibilityResult,
+} from "../lib/visibility";
 
 interface Props {
   candidates: RankedCandidate[];
   selected: string | null;
   onSelect: (trksub: string) => void;
   loading: boolean;
+  observerLocation: ObserverLocation;
 }
 
 function classBadgeColor(cls: string): string {
@@ -30,6 +37,35 @@ function probBarColor(prob: number): string {
   if (prob >= 0.5) return "bg-amber-500";
   if (prob >= 0.2) return "bg-orange-500";
   return "bg-zinc-700";
+}
+
+function VisibilityChip({ vis }: { vis: VisibilityResult }) {
+  const { status, altitude_deg_now, set_utc, rise_utc } = vis;
+
+  if (status === "visible_now") {
+    return (
+      <span className="font-mono text-[9px] text-emerald-400">
+        ▲ {altitude_deg_now.toFixed(0)}°
+      </span>
+    );
+  }
+  if (status === "sets_soon") {
+    return (
+      <span className="font-mono text-[9px] text-amber-400">
+        SETS {formatUtcTime(set_utc)}
+      </span>
+    );
+  }
+  if (status === "rises_later") {
+    return (
+      <span className="font-mono text-[9px] text-zinc-500">
+        RISES {formatUtcTime(rise_utc)}
+      </span>
+    );
+  }
+  return (
+    <span className="font-mono text-[9px] text-zinc-700">BELOW</span>
+  );
 }
 
 function SkeletonRow() {
@@ -57,9 +93,28 @@ export function CandidateList({
   selected,
   onSelect,
   loading,
+  observerLocation,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("p_neo_desc");
   const [phaOnly, setPhaOnly] = useState(false);
+  const now = useMemo(() => new Date(), []);
+
+  const visibilityMap = useMemo(() => {
+    const map = new Map<string, VisibilityResult>();
+    for (const c of candidates) {
+      map.set(
+        c.trksub,
+        computeVisibilityTonight(
+          c.ra_deg,
+          c.dec_deg,
+          observerLocation.latitude_deg,
+          observerLocation.longitude_deg,
+          now,
+        ),
+      );
+    }
+    return map;
+  }, [candidates, observerLocation, now]);
 
   const displayed = useMemo(() => {
     const filtered = phaOnly
@@ -110,6 +165,7 @@ export function CandidateList({
             const isSelected = c.trksub === selected;
             const probNeo = c.prediction.prob_neo;
             const isPha = c.prediction.prob_pha > 0.5;
+            const vis = visibilityMap.get(c.trksub);
             return (
               <li key={c.trksub}>
                 <button
@@ -126,13 +182,16 @@ export function CandidateList({
                     <span className="font-mono text-[13px] text-zinc-200">
                       {c.trksub}
                     </span>
-                    <span
-                      className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classBadgeColor(
-                        c.prediction.map_class,
-                      )}`}
-                    >
-                      {c.prediction.map_class}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {vis && <VisibilityChip vis={vis} />}
+                      <span
+                        className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classBadgeColor(
+                          c.prediction.map_class,
+                        )}`}
+                      >
+                        {c.prediction.map_class}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mt-1.5 flex items-center gap-2">

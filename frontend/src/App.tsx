@@ -7,8 +7,10 @@ import { CostMeter } from "./components/CostMeter";
 import { PredictionCard } from "./components/PredictionCard";
 import { AgentAlertBanner } from "./components/AgentAlertBanner";
 import { AgentStatusIndicator } from "./components/AgentStatusIndicator";
+import { ObserverLocationControl } from "./components/ObserverLocationControl";
 import { YR4ReplayView } from "./components/YR4ReplayView";
 import { useAgentFeed } from "./hooks/useAgentFeed";
+import { useObserverLocation } from "./hooks/useObserverLocation";
 import type { AgentEventNewCandidate } from "./api/types";
 
 type StreamStatus = "idle" | "streaming" | "done" | "cache_hit" | "error";
@@ -19,6 +21,10 @@ const YR4_CROSS_SURVEY_CONTEXT =
 
 export default function App() {
   const [mode, setMode] = useState<AppMode>("live");
+
+  // Observer location (persisted to localStorage)
+  const { location: observerLocation, setLocation: setObserverLocation } =
+    useObserverLocation();
 
   // Live feed state
   const [candidates, setCandidates] = useState<RankedCandidate[]>([]);
@@ -127,6 +133,7 @@ export default function App() {
             cross_survey_context:
               candidate.trksub === "P21YR4A" ? YR4_CROSS_SURVEY_CONTEXT : null,
             include_reasoning: true,
+            observer_location: `${observerLocation.label} (${observerLocation.latitude_deg > 0 ? "N" : "S"}${Math.abs(observerLocation.latitude_deg).toFixed(1)}°, ${observerLocation.longitude_deg > 0 ? "E" : "W"}${Math.abs(observerLocation.longitude_deg).toFixed(1)}°)`,
           },
           controller.signal,
         )) {
@@ -143,7 +150,7 @@ export default function App() {
         setStatus("error");
       }
     },
-    [displayCandidates, status],
+    [displayCandidates, status, observerLocation],
   );
 
   return (
@@ -185,6 +192,10 @@ export default function App() {
             </button>
           </div>
 
+          <ObserverLocationControl
+            location={observerLocation}
+            onLocationChange={setObserverLocation}
+          />
           <AgentStatusIndicator
             agentStatus={agentStatus}
             connectionStatus={connectionStatus}
@@ -209,6 +220,7 @@ export default function App() {
             selected={selected}
             onSelect={handleSelect}
             loading={loading}
+            observerLocation={observerLocation}
           />
 
           <section className="flex flex-col overflow-hidden">
@@ -218,7 +230,10 @@ export default function App() {
               </div>
             ) : selectedCandidate ? (
               <>
-                <PredictionCard candidate={selectedCandidate} />
+                <PredictionCard
+                  candidate={selectedCandidate}
+                  observerLocation={observerLocation}
+                />
                 <BriefingPanel
                   reasoning={reasoning}
                   briefing={briefing}
