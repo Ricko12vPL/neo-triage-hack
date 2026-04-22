@@ -1,17 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, streamBriefing } from "./api/client";
-import type { BriefingChunk, RankedCandidate } from "./api/types";
+import type { BriefingChunk, RankedCandidate, YR4Milestone } from "./api/types";
 import { BriefingPanel } from "./components/BriefingPanel";
 import { CandidateList } from "./components/CandidateList";
 import { CostMeter } from "./components/CostMeter";
 import { PredictionCard } from "./components/PredictionCard";
+import { AgentAlertBanner } from "./components/AgentAlertBanner";
+import { AgentStatusIndicator } from "./components/AgentStatusIndicator";
+import { YR4ReplayView } from "./components/YR4ReplayView";
+import { useAgentFeed } from "./hooks/useAgentFeed";
+import type { AgentEventNewCandidate } from "./api/types";
 
 type StreamStatus = "idle" | "streaming" | "done" | "cache_hit" | "error";
+type AppMode = "live" | "yr4replay";
 
 const YR4_CROSS_SURVEY_CONTEXT =
   "ATLAS covered this region 6h ago to V=19.7 and saw nothing. CSS covered 14h ago to V=20.2 and saw nothing.";
 
 export default function App() {
+  const [mode, setMode] = useState<AppMode>("live");
+
+  // Live feed state
   const [candidates, setCandidates] = useState<RankedCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -22,7 +31,20 @@ export default function App() {
   const [streamError, setStreamError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Initial candidate load — loading starts as true via useState(true)
+  // YR4 replay state
+  const [yr4Timeline, setYr4Timeline] = useState<YR4Milestone[]>([]);
+
+  // Agent feed
+  const { events, connectionStatus, agentStatus } = useAgentFeed();
+  const newCandidateEvents = useMemo(
+    () =>
+      events.filter(
+        (e): e is AgentEventNewCandidate => e.type === "new_candidate",
+      ),
+    [events],
+  );
+
+  // Load initial ranked candidates
   useEffect(() => {
     let cancelled = false;
     api
@@ -43,23 +65,39 @@ export default function App() {
     };
   }, []);
 
+  // Load YR4 timeline when switching to replay mode
+  useEffect(() => {
+    if (mode !== "yr4replay" || yr4Timeline.length > 0) return;
+    api.yr4Timeline().then(setYr4Timeline).catch(() => {});
+  }, [mode, yr4Timeline.length]);
+
+  // Merge agent-detected candidates into the ranked list
+  const displayCandidates = useMemo(() => {
+    const agentNew = newCandidateEvents.map(
+      (e): RankedCandidate => ({ ...e.candidate, prediction: e.prediction }),
+    );
+    const agentTrksubs = new Set(agentNew.map((c) => c.trksub));
+    const unique = agentNew.filter(
+      (c, i, arr) => arr.findIndex((x) => x.trksub === c.trksub) === i,
+    );
+    return [...unique, ...candidates.filter((c) => !agentTrksubs.has(c.trksub))];
+  }, [newCandidateEvents, candidates]);
+
   const selectedCandidate = useMemo(
-    () => candidates.find((c) => c.trksub === selected) ?? null,
-    [candidates, selected],
+    () => displayCandidates.find((c) => c.trksub === selected) ?? null,
+    [displayCandidates, selected],
   );
 
   const handleSelect = useCallback(
     async (trksub: string) => {
-      if (status === "streaming") {
-        abortRef.current?.abort();
-      }
+      if (status === "streaming") abortRef.current?.abort();
       setSelected(trksub);
       setReasoning("");
       setBriefing("");
       setStatus("streaming");
       setStreamError(null);
 
-      const candidate = candidates.find((c) => c.trksub === trksub);
+      const candidate = displayCandidates.find((c) => c.trksub === trksub);
       if (!candidate) {
         setStatus("error");
         setStreamError(`Candidate ${trksub} not in list`);
@@ -93,7 +131,7 @@ export default function App() {
         setStatus("error");
       }
     },
-    [candidates, status],
+    [displayCandidates, status],
   );
 
   return (
@@ -107,40 +145,94 @@ export default function App() {
             Bayesian NEO follow-up · Claude Opus 4.7 reasoning
           </p>
         </div>
-        <CostMeter />
+
+        <div className="flex items-center gap-4">
+          {/* Mode tabs */}
+          <div className="flex rounded bg-zinc-900 p-0.5 text-[11px]">
+            <button
+              onClick={() => setMode("live")}
+              className={[
+                "rounded px-3 py-1 font-mono uppercase tracking-wider transition-colors",
+                mode === "live"
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-300",
+              ].join(" ")}
+            >
+              Live Feed
+            </button>
+            <button
+              onClick={() => setMode("yr4replay")}
+              className={[
+                "rounded px-3 py-1 font-mono uppercase tracking-wider transition-colors",
+                mode === "yr4replay"
+                  ? "bg-red-900/80 text-red-200"
+                  : "text-zinc-500 hover:text-zinc-300",
+              ].join(" ")}
+            >
+              2024 YR4 Replay
+            </button>
+          </div>
+
+          <AgentStatusIndicator
+            agentStatus={agentStatus}
+            connectionStatus={connectionStatus}
+          />
+          <CostMeter />
+        </div>
       </header>
 
-      <main className="grid grid-cols-[320px_1fr] overflow-hidden">
-        <CandidateList
-          candidates={candidates}
-          selected={selected}
-          onSelect={handleSelect}
-          loading={loading}
-        />
+      {/* Alert banner — overlaid, not in flow */}
+      <AgentAlertBanner
+        events={newCandidateEvents}
+        onSelect={(trksub) => {
+          setMode("live");
+          handleSelect(trksub);
+        }}
+      />
 
-        <section className="flex flex-col overflow-hidden">
-          {loadError ? (
-            <div className="flex h-full items-center justify-center px-6 text-sm text-red-300">
-              Failed to load candidates: {loadError}
-            </div>
-          ) : selectedCandidate ? (
-            <>
-              <PredictionCard candidate={selectedCandidate} />
-              <BriefingPanel
-                reasoning={reasoning}
-                briefing={briefing}
-                status={status}
-                error={streamError}
-              />
-            </>
+      {mode === "live" ? (
+        <main className="grid grid-cols-[320px_1fr] overflow-hidden">
+          <CandidateList
+            candidates={displayCandidates}
+            selected={selected}
+            onSelect={handleSelect}
+            loading={loading}
+          />
+
+          <section className="flex flex-col overflow-hidden">
+            {loadError ? (
+              <div className="flex h-full items-center justify-center px-6 text-sm text-red-300">
+                Failed to load candidates: {loadError}
+              </div>
+            ) : selectedCandidate ? (
+              <>
+                <PredictionCard candidate={selectedCandidate} />
+                <BriefingPanel
+                  reasoning={reasoning}
+                  briefing={briefing}
+                  status={status}
+                  error={streamError}
+                />
+              </>
+            ) : (
+              <div className="flex h-full items-center justify-center px-6 text-sm text-zinc-500">
+                Select a candidate from the left panel to load a Claude
+                briefing.
+              </div>
+            )}
+          </section>
+        </main>
+      ) : (
+        <main className="overflow-hidden">
+          {yr4Timeline.length > 0 ? (
+            <YR4ReplayView timeline={yr4Timeline} />
           ) : (
-            <div className="flex h-full items-center justify-center px-6 text-sm text-zinc-500">
-              Select a candidate from the left panel to load a Claude
-              briefing.
+            <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+              Loading 2024 YR4 timeline…
             </div>
           )}
-        </section>
-      </main>
+        </main>
+      )}
     </div>
   );
 }
@@ -174,7 +266,6 @@ function handleChunk(chunk: BriefingChunk, s: ChunkSetters) {
       s.setStatus("error");
       break;
     case "meta":
-      // No-op for now.
       break;
   }
 }

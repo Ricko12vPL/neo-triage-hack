@@ -4,12 +4,14 @@
  * base means same-origin.
  */
 import type {
+  AgentStatus,
   BriefingChunk,
   BriefingRequest,
   Candidate,
   CostSummary,
   Prediction,
   RankedCandidate,
+  YR4Milestone,
 } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
@@ -35,7 +37,68 @@ export const api = {
   rank: (trksub: string) =>
     getJson<Prediction>(`/api/rank/${encodeURIComponent(trksub)}`),
   cost: () => getJson<CostSummary>("/api/cost/"),
+  agentStatus: () => getJson<AgentStatus>("/api/agent/status"),
+  yr4Timeline: () => getJson<YR4Milestone[]>("/api/replay/yr4"),
+  yr4Milestone: (hour: number) =>
+    getJson<YR4Milestone>(`/api/replay/yr4/${hour}`),
 };
+
+/** Parse SSE body into BriefingChunk stream. Shared by all streaming endpoints. */
+async function* parseSseStream(
+  resp: Response,
+  label: string,
+): AsyncGenerator<BriefingChunk, void, void> {
+  if (!resp.ok || !resp.body) {
+    const detail = await resp.text().catch(() => resp.statusText);
+    throw new Error(`${label} failed: ${resp.status} ${detail}`);
+  }
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let sep = buffer.indexOf("\n\n");
+      while (sep !== -1) {
+        const block = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        const dataLine = block.split("\n").find((l) => l.startsWith("data: "));
+        if (dataLine) {
+          try {
+            yield JSON.parse(dataLine.slice(6)) as BriefingChunk;
+          } catch { /* malformed SSE chunk — skip */ }
+        }
+        sep = buffer.indexOf("\n\n");
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+export async function* streamReplayBrief(
+  hour: number,
+): AsyncGenerator<BriefingChunk, void, void> {
+  const resp = await fetch(`${BASE}/api/replay/yr4/${hour}/brief`, {
+    method: "POST",
+    headers: { Accept: "text/event-stream" },
+  });
+  yield* parseSseStream(resp, `POST /api/replay/yr4/${hour}/brief`);
+}
+
+export async function* streamYr4Alert(): AsyncGenerator<
+  BriefingChunk,
+  void,
+  void
+> {
+  const resp = await fetch(`${BASE}/api/replay/yr4/alert`, {
+    method: "POST",
+    headers: { Accept: "text/event-stream" },
+  });
+  yield* parseSseStream(resp, "POST /api/replay/yr4/alert");
+}
 
 /**
  * Stream a briefing as parsed SSE chunks. Caller receives one
@@ -50,51 +113,9 @@ export async function* streamBriefing(
 ): AsyncGenerator<BriefingChunk, void, void> {
   const resp = await fetch(`${BASE}/api/briefing/`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-    },
+    headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
     body: JSON.stringify(request),
     signal,
   });
-
-  if (!resp.ok || !resp.body) {
-    const detail = await resp.text().catch(() => resp.statusText);
-    throw new Error(`POST /api/briefing/ failed: ${resp.status} ${detail}`);
-  }
-
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      // Parse complete SSE blocks separated by \n\n
-      let sep = buffer.indexOf("\n\n");
-      while (sep !== -1) {
-        const block = buffer.slice(0, sep);
-        buffer = buffer.slice(sep + 2);
-
-        const dataLine = block
-          .split("\n")
-          .find((line) => line.startsWith("data: "));
-        if (dataLine) {
-          try {
-            const chunk = JSON.parse(dataLine.slice(6)) as BriefingChunk;
-            yield chunk;
-          } catch (err) {
-            console.error("Failed to parse SSE chunk", err, dataLine);
-          }
-        }
-
-        sep = buffer.indexOf("\n\n");
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
+  yield* parseSseStream(resp, "POST /api/briefing/");
 }
