@@ -65,6 +65,18 @@ export default function App() {
     };
   }, []);
 
+  // Auto-refresh candidate list every 15 min — aligned with NEOCP cache TTL.
+  // Silent background fetch: no loading state reset, errors swallowed.
+  useEffect(() => {
+    const id = setInterval(() => {
+      api
+        .ranked(10)
+        .then(setCandidates)
+        .catch(() => {});
+    }, 15 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
   // Load YR4 timeline when switching to replay mode
   useEffect(() => {
     if (mode !== "yr4replay" || yr4Timeline.length > 0) return;
