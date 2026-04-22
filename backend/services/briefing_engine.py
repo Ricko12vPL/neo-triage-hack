@@ -298,6 +298,97 @@ async def stream_briefing(
     )
 
 
+_YR4_ALERT_SYSTEM = """You are a veteran follow-up astronomer. The NEO you have been tracking for 18 hours has just crossed Torino Scale 3. Impact probability is 2.4%. Possible impact in December 2032.
+
+The global follow-up network needs to know immediately. You have 30 seconds to write the alert message. No time for polish. No structure markers, no preamble, no sign-off. Just the words that go out.
+
+Write as if this is the message — because it is."""
+
+_YR4_ALERT_USER = (
+    "Write the alert message that goes to the global follow-up network right now. "
+    "This is real. Choose your words."
+)
+
+# In-memory rate limit: timestamp of last alert call
+_last_alert_at: float = 0.0
+ALERT_RATE_LIMIT_SECONDS = 10
+
+
+async def generate_yr4_alert(
+    *,
+    client: AsyncAnthropic | None = None,
+) -> AsyncIterator[BriefingChunk]:
+    """Stream a live-written YR4 hazard alert.
+
+    NN-10: MUST NOT use the cache. Every invocation generates fresh output
+    because the demo requires the alert to be different each time — the judge
+    sees the model rising to the moment, not a cached replay.
+
+    Rate-limited to 1 call per ALERT_RATE_LIMIT_SECONDS to prevent
+    accidental cost spikes from rapid UI clicks.
+    """
+    import time
+
+    global _last_alert_at
+    now = time.monotonic()
+    if now - _last_alert_at < ALERT_RATE_LIMIT_SECONDS:
+        yield BriefingChunk(
+            type="error",
+            content=f"Rate limited — wait {ALERT_RATE_LIMIT_SECONDS}s between alert calls",
+        )
+        return
+    _last_alert_at = now
+
+    claude_client = client or _default_client()
+    full_text_parts: list[str] = []
+    input_tokens = 0
+    output_tokens = 0
+    thinking_tokens = 0
+
+    try:
+        async with claude_client.messages.stream(
+            model=MODEL_VERSION,
+            max_tokens=400,
+            system=_YR4_ALERT_SYSTEM,
+            messages=[{"role": "user", "content": _YR4_ALERT_USER}],
+            thinking={"type": "adaptive"},
+            output_config={"effort": DEFAULT_THINKING_EFFORT},
+        ) as stream:
+            async for event in stream:
+                if getattr(event, "type", None) != "content_block_delta":
+                    continue
+                delta = getattr(event, "delta", None)
+                if delta is None:
+                    continue
+                delta_type = getattr(delta, "type", None)
+                if delta_type == "thinking_delta":
+                    text = getattr(delta, "thinking", "") or ""
+                    if text:
+                        yield BriefingChunk(type="reasoning", content=text)
+                elif delta_type == "text_delta":
+                    text = getattr(delta, "text", "") or ""
+                    if text:
+                        full_text_parts.append(text)
+                        yield BriefingChunk(type="text", content=text)
+
+            final = await stream.get_final_message()
+            usage = final.usage
+            input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+            output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+            thinking_tokens = int(getattr(usage, "thinking_tokens", 0) or 0)
+
+    except Exception as exc:
+        yield BriefingChunk(type="error", content=f"{type(exc).__name__}: {exc}")
+        return
+
+    cumulative_cost = cost_tracker.record(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        thinking_tokens=thinking_tokens,
+    )
+    yield BriefingChunk(type="done", content="ok", cumulative_cost_usd=cumulative_cost)
+
+
 async def generate_briefing(
     request: BriefingRequest,
     *,

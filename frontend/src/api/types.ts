@@ -72,3 +72,63 @@ export interface CostSummary {
   total_thinking_tokens: number;
   last_call_at: string | null;
 }
+
+// ---- Agent / WebSocket feed types ----------------------------------------
+
+export interface AgentStatus {
+  cycle_count: number;
+  last_cycle_at: string | null;
+  session_cost_usd: number;
+  prev_trksubs_count: number;
+  connection_count: number;
+  status: "running" | "stopped" | "error";
+}
+
+export type AgentEventType = "new_candidate" | "cycle_complete" | "error";
+
+export interface AgentEventNewCandidate {
+  type: "new_candidate";
+  candidate: Candidate;
+  prediction: Prediction;
+  briefing_preview: string;
+  timestamp: string;
+}
+
+export interface AgentEventCycleComplete {
+  type: "cycle_complete";
+  cycle: number;
+  candidates_seen: number;
+  new_count: number;
+  cost_delta_usd: number;
+  session_cost_usd: number;
+  timestamp: string;
+}
+
+export interface AgentEventError {
+  type: "error";
+  message: string;
+  timestamp: string;
+}
+
+export type AgentEvent =
+  | AgentEventNewCandidate
+  | AgentEventCycleComplete
+  | AgentEventError;
+
+// ---- YR4 Replay types ----------------------------------------------------
+
+export interface YR4Milestone {
+  hour: number;
+  n_observations: number;
+  arc_length_minutes: number;
+  mean_magnitude_v: number;
+  rate_arcsec_min: number;
+  digest2_neo_noid: number;
+  prob_neo_estimate: number;
+  prob_pha_estimate: number;
+  map_class: ClassLabel;
+  is_pha: boolean;
+  event: string;
+  event_description: string;
+  narrative_context: string;
+}
