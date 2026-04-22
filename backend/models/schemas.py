@@ -15,8 +15,18 @@ ClassLabel = Literal["NEO", "MBA", "COMET", "ARTIFACT", "UNCONFIRMED"]
 """The five mutually exclusive disposition classes the classifier can assign."""
 
 
-ChunkType = Literal["thinking", "text", "meta", "done", "error"]
-"""SSE chunk categories emitted by the streaming briefing endpoint."""
+ChunkType = Literal["thinking", "reasoning", "text", "meta", "done", "error"]
+"""SSE chunk categories emitted by the streaming briefing endpoint.
+
+- `thinking`: legacy — extended-thinking delta events from older Claude API.
+  Opus 4.7 adaptive mode does not emit these; kept for backward compatibility.
+- `reasoning`: the `## Reasoning` section of the model's structured output,
+  streamed before the `## Briefing` marker. Rendered in a collapsible panel
+  in the UI — this is how we make Opus 4.7 thinking visible without the
+  streamed thinking_delta events that adaptive mode withholds.
+- `text`: the `## Briefing` section content — the observer-facing output.
+- `meta`, `done`, `error`: control events.
+"""
 
 
 class Candidate(BaseModel):
@@ -81,6 +91,7 @@ class BriefingResponse(BaseModel):
 
     trksub: str
     briefing_markdown: str
+    reasoning_markdown: str = ""
     reasoning_trace: str | None = None
     model_version: str
     input_tokens: int

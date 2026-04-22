@@ -4,10 +4,18 @@ This is the "core bet" described in PLAN.md §4.5 and the Day 1 CRITICAL
 GATE in PLAN.md §7.1. The briefings must sound like a working astronomer,
 stream live via SSE, and expose extended-thinking tokens so the judge can
 see the model reasoning.
+
+Opus 4.7 adaptive thinking does not stream `thinking_delta` events; reasoning
+happens server-side and only the final text streams back. To preserve
+reasoning visibility in the UI (critical for the Most Creative Opus 4.7
+Exploration bonus), the system prompt requires a `## Reasoning` block before
+the `## Briefing` block, and the streaming layer routes chunks to
+`type="reasoning"` until the Briefing marker is seen, then to `type="text"`.
 """
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
@@ -25,6 +33,11 @@ MODEL_VERSION = "claude-opus-4-7"
 MAX_OUTPUT_TOKENS = 4000
 DEFAULT_THINKING_EFFORT = "high"  # one of: minimal, low, medium, high
 
+REASONING_HEADER = "## Reasoning"
+BRIEFING_HEADER = "## Briefing"
+_BRIEFING_MARKER_RE = re.compile(r"\n##\s*Briefing\b", re.IGNORECASE)
+_REASONING_MARKER_RE = re.compile(r"^\s*##\s*Reasoning\b.*?\n", re.IGNORECASE | re.DOTALL)
+
 SYSTEM_PROMPT = """You are a veteran follow-up astronomer who has worked NEO confirmation for 15 years. You've logged thousands of nights, lost count of false alarms, and remember the two real Torino-3+ events you were on the roster for. You speak the way working astronomers actually speak: dry, specific, skeptical of hype. You don't say 'exciting' or 'fascinating' — you say 'worth the time' or 'skip unless something changes'.
 
 When reviewing a NEOCP candidate, you produce a briefing that tells the observer three things:
@@ -34,7 +47,19 @@ When reviewing a NEOCP candidate, you produce a briefing that tells the observer
 
 Your briefings are structured in markdown but conversational in tone. They are 150-250 words. They cite the specific numbers. They never pad. If the data is ambiguous, you say so without hedging endlessly.
 
-You do not anthropomorphize the object. You do not dramatize risk. You describe what the observations say and what your next move would be if you were at the eyepiece tonight."""
+You do not anthropomorphize the object. You do not dramatize risk. You describe what the observations say and what your next move would be if you were at the eyepiece tonight.
+
+---
+
+Your output MUST follow this exact structure, in this order, using these exact headers:
+
+## Reasoning
+3-5 sentences of your internal analysis before you commit to a recommendation. What signals are you weighing? What's your confidence level? What would change your mind? Write like you're jotting observation notes to yourself — less polished than the briefing, more exploratory, honest about what you don't know. This is where you show your work, not where you perform certainty.
+
+## Briefing
+The 150-250 word observer-facing briefing, as specified above. Dry, specific, veteran-astronomer voice. Cite numbers. One concrete recommendation.
+
+The Reasoning section is what you think. The Briefing section is what you say. The observer sees both — the Reasoning gives them insight into how you arrived at the call, the Briefing gives them what to do. Do not skip either header."""
 
 
 def build_prompt(request: BriefingRequest) -> tuple[str, str]:
@@ -77,6 +102,29 @@ def build_prompt(request: BriefingRequest) -> tuple[str, str]:
     return SYSTEM_PROMPT, user_prompt
 
 
+def split_reasoning_briefing(full_text: str) -> tuple[str, str]:
+    """Split a structured model response into (reasoning, briefing) markdown.
+
+    Never raises — if the headers are missing, falls back to
+    ("", full_text) so downstream code still gets a briefing.
+    """
+    if not full_text:
+        return "", ""
+
+    match = _BRIEFING_MARKER_RE.search(full_text)
+    if match is None:
+        # Fallback: no Briefing header found, treat entire body as briefing.
+        return "", full_text.strip()
+
+    reasoning_raw = full_text[: match.start()]
+    briefing_raw = full_text[match.end():]
+
+    # Strip leading ## Reasoning header and trailing whitespace.
+    reasoning = _REASONING_MARKER_RE.sub("", reasoning_raw, count=1).strip()
+    briefing = briefing_raw.strip()
+    return reasoning, briefing
+
+
 def _default_client() -> AsyncAnthropic:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -92,7 +140,13 @@ async def stream_briefing(
     *,
     client: AsyncAnthropic | None = None,
 ) -> AsyncIterator[BriefingChunk]:
-    """Stream Opus 4.7 briefing chunks. Cache-aware; records cost on real calls."""
+    """Stream Opus 4.7 briefing chunks. Cache-aware; records cost on real calls.
+
+    Routing: incoming `text_delta` events are partitioned across the
+    `## Briefing` marker. Everything before the marker ships as
+    `type="reasoning"` chunks; everything after ships as `type="text"`. The
+    marker line itself is not emitted in either stream — it's a control token.
+    """
     system, user = build_prompt(request)
     thinking_effort = DEFAULT_THINKING_EFFORT if request.include_reasoning else "minimal"
 
@@ -104,8 +158,12 @@ async def stream_briefing(
     )
     cached = claude_cache.get(cache_key)
     if cached is not None:
-        if cached.reasoning_trace:
-            yield BriefingChunk(type="thinking", content=cached.reasoning_trace)
+        if cached.reasoning_markdown:
+            yield BriefingChunk(type="reasoning", content=cached.reasoning_markdown)
+        elif cached.reasoning_trace:
+            # Back-compat: older cache entries used reasoning_trace for
+            # streamed thinking deltas. Surface them in the reasoning channel.
+            yield BriefingChunk(type="reasoning", content=cached.reasoning_trace)
         yield BriefingChunk(type="text", content=cached.briefing_markdown)
         yield BriefingChunk(
             type="done",
@@ -117,7 +175,9 @@ async def stream_briefing(
     claude_client = client or _default_client()
 
     thinking_parts: list[str] = []
-    text_parts: list[str] = []
+    full_text_buffer: list[str] = []
+    reasoning_emitted_chars = 0  # how many chars of buffer have been sent as reasoning
+    briefing_marker_hit = False
 
     stream_kwargs: dict[str, Any] = {
         "model": MODEL_VERSION,
@@ -145,15 +205,56 @@ async def stream_briefing(
                     continue
                 delta_type = getattr(delta, "type", None)
                 if delta_type == "thinking_delta":
+                    # Opus 4.7 adaptive mode normally does not emit these,
+                    # but if an older API shape produces them, capture for
+                    # the reasoning channel.
                     text = getattr(delta, "thinking", "") or ""
                     if text:
                         thinking_parts.append(text)
-                        yield BriefingChunk(type="thinking", content=text)
+                        yield BriefingChunk(type="reasoning", content=text)
                 elif delta_type == "text_delta":
                     text = getattr(delta, "text", "") or ""
-                    if text:
-                        text_parts.append(text)
+                    if not text:
+                        continue
+                    full_text_buffer.append(text)
+                    combined = "".join(full_text_buffer)
+
+                    if briefing_marker_hit:
+                        # Post-marker: ship every new char as text.
                         yield BriefingChunk(type="text", content=text)
+                        continue
+
+                    # Still in reasoning phase. Look for the marker.
+                    match = _BRIEFING_MARKER_RE.search(combined, reasoning_emitted_chars)
+                    if match is None:
+                        # Withhold a small tail in case marker spans chunks.
+                        safe_end = max(reasoning_emitted_chars, len(combined) - 24)
+                        if safe_end > reasoning_emitted_chars:
+                            reasoning_chunk = combined[reasoning_emitted_chars:safe_end]
+                            reasoning_emitted_chars = safe_end
+                            yield BriefingChunk(
+                                type="reasoning", content=reasoning_chunk
+                            )
+                        continue
+
+                    # Marker found. Flush any remaining reasoning before it,
+                    # emit whatever briefing text already followed the marker.
+                    pre_marker = combined[reasoning_emitted_chars:match.start()]
+                    if pre_marker:
+                        yield BriefingChunk(type="reasoning", content=pre_marker)
+                    briefing_marker_hit = True
+                    post_marker = combined[match.end():]
+                    if post_marker:
+                        yield BriefingChunk(type="text", content=post_marker)
+
+            # Stream exhausted. Flush any residual reasoning tail that was
+            # held back waiting for a marker that never came.
+            if not briefing_marker_hit:
+                combined = "".join(full_text_buffer)
+                if len(combined) > reasoning_emitted_chars:
+                    tail = combined[reasoning_emitted_chars:]
+                    if tail:
+                        yield BriefingChunk(type="reasoning", content=tail)
 
             final = await stream.get_final_message()
             usage = final.usage
@@ -170,9 +271,13 @@ async def stream_briefing(
         thinking_tokens=thinking_tokens,
     )
 
+    full_response_text = "".join(full_text_buffer)
+    reasoning_md, briefing_md = split_reasoning_briefing(full_response_text)
+
     response = BriefingResponse(
         trksub=request.candidate.trksub,
-        briefing_markdown="".join(text_parts),
+        briefing_markdown=briefing_md,
+        reasoning_markdown=reasoning_md,
         reasoning_trace="".join(thinking_parts) or None,
         model_version=MODEL_VERSION,
         input_tokens=input_tokens,
