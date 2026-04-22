@@ -105,7 +105,7 @@ def sample_candidate() -> Candidate:
         trksub="P21YR4A",
         ra_deg=88.527,
         dec_deg=2.143,
-        mean_magnitude=19.5,
+        mean_magnitude_v=19.5,
         rate_arcsec_min=2.8,
         observatory_code="W68",
         first_obs_datetime=datetime(2026, 4, 21, 22, 30, tzinfo=UTC),

@@ -35,7 +35,7 @@ class Candidate(BaseModel):
     trksub: str = Field(..., description="MPC submitter tracklet designation")
     ra_deg: float = Field(..., ge=0, lt=360, description="RA J2000 (degrees)")
     dec_deg: float = Field(..., ge=-90, le=90, description="Dec J2000 (degrees)")
-    mean_magnitude: float = Field(..., description="Apparent magnitude, V band unless noted")
+    mean_magnitude_v: float = Field(..., description="Apparent magnitude, V band unless noted")
     rate_arcsec_min: float = Field(..., description="Rate of motion (arcsec per minute)")
     observatory_code: str = Field(..., description="MPC observatory code")
     first_obs_datetime: datetime = Field(..., description="First observation in tracklet (UTC)")
