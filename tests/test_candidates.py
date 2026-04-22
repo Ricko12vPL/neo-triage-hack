@@ -1,10 +1,29 @@
-"""Smoke tests for /api/candidates."""
+"""Smoke tests for /api/candidates.
+
+The fetcher is patched to return MOCK_CANDIDATES so tests are fast,
+deterministic, and network-isolated.
+"""
+from __future__ import annotations
+
+from unittest.mock import patch
+
+import pytest
 from fastapi.testclient import TestClient
 
+from backend.data.mock_candidates import MOCK_CANDIDATES
 from backend.main import app
 from backend.models.schemas import Candidate
 
 client = TestClient(app)
+
+async def _mock_fetch(limit: int = 20) -> list[Candidate]:
+    return MOCK_CANDIDATES[:limit]
+
+
+@pytest.fixture(autouse=True)
+def patch_fetcher():
+    with patch("backend.routers.candidates.fetch_neocp_candidates", _mock_fetch):
+        yield
 
 
 def test_health_still_ok():
@@ -69,8 +88,8 @@ def test_candidate_digest2_in_range():
         assert 0 <= item["digest2_neo_noid"] <= 100
 
 
-def test_mock_composition_has_all_categories():
-    """The fixture must include high-NEO, intermediate, artifact, and YR4 analog."""
+def test_fallback_dataset_covers_all_categories():
+    """Fallback mock dataset must include high-NEO, intermediate, artifact, and YR4 analog."""
     response = client.get("/api/candidates/")
     items = response.json()
     assert any(i["digest2_neo_noid"] >= 80 for i in items), "need high-NEO cases"
