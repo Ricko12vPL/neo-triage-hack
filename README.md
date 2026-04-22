@@ -18,9 +18,9 @@ When the Vera C. Rubin Observatory enters full operations, it will flood the pla
 ## Stack
 
 - **Backend:** Python 3.12 + FastAPI + scikit-learn + Anthropic SDK
-- **Frontend:** Next.js 14 + Tailwind + shadcn/ui *(Paweł — landing soon)*
-- **Orchestration:** Claude Managed Agents (Opus 4.7)
-- **Data:** Polars + SQLite
+- **Frontend:** Vite + React + TypeScript + Tailwind CSS
+- **Orchestration:** Claude Managed Agent (Opus 4.7, async loop, JSONL audit trail)
+- **Data:** Polars + JSON/JSONL (no database)
 
 ## Running locally
 

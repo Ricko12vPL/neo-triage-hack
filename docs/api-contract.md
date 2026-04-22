@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Version** | 0.0.2 (hackathon, Day 2) |
-| **Status** | Active — Day 2 ranker + reasoning visibility integrated |
+| **Version** | 0.0.3 (hackathon, Day 3) |
+| **Status** | Active — Day 3 Managed Agent + YR4 replay + WebSocket feed integrated |
 | **Base URL (local)** | `http://localhost:8000` |
-| **Last Updated** | 2026-04-22 |
+| **Last Updated** | 2026-04-24 |
 
 ## Overview
 
@@ -38,6 +38,13 @@ The neo-triage backend exposes a REST + SSE API consumed by the Next.js frontend
 | `GET`  | `/api/rank/{trksub}` | — | `Prediction` (404 if unknown) | no |
 | `POST` | `/api/briefing/` | `BriefingRequest` | SSE stream of `BriefingChunk` | **yes** |
 | `GET`  | `/api/cost/` | — | `CostSummary` | no |
+| `WS`   | `/ws/feed` | — | JSON event stream (see Agent Events below) | WebSocket |
+| `GET`  | `/api/agent/status` | — | `AgentStatus` | no |
+| `GET`  | `/api/agent/log` | query `n` (default 50) | `list[CycleLogEntry]` | no |
+| `GET`  | `/api/replay/yr4` | — | `list[YR4Milestone]` (7 entries) | no |
+| `GET`  | `/api/replay/yr4/{hour}` | — | `YR4Milestone` (404 if not in timeline) | no |
+| `POST` | `/api/replay/yr4/{hour}/brief` | — | SSE stream of `BriefingChunk` (cached, NN-03) | **yes** |
+| `POST` | `/api/replay/yr4/alert` | — | SSE stream of `BriefingChunk` (**never cached**, NN-10) | **yes** |
 
 ### Error responses
 
@@ -178,8 +185,49 @@ const resp = await fetch("/api/briefing/", {
 //   error      → toast / inline error
 ```
 
+## Agent Events (WebSocket `/ws/feed`)
+
+JSON frames broadcast to all connected clients whenever the Managed Agent completes a cycle.
+
+| `type` | Payload fields | Description |
+|--------|---------------|-------------|
+| `new_candidate` | `candidate`, `prediction`, `briefing_preview` | New NEO candidate detected and briefed |
+| `cycle_complete` | `cycle`, `candidates_seen`, `new_count`, `cost_usd` | End-of-cycle summary |
+| `error` | `message` | Cycle-level error (agent continues, exponential backoff applied) |
+
+## Additional Schemas (Day 3)
+
+### `AgentStatus`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `cycle_count` | `int` | Total cycles since server start |
+| `last_cycle_at` | `str \| null` | ISO 8601 UTC timestamp |
+| `session_cost_usd` | `float` | Claude spend this session |
+| `prev_trksubs_count` | `int` | Candidates seen in prior cycles |
+| `connection_count` | `int` | Active WebSocket connections |
+| `status` | `str` | Always `"running"` |
+
+### `YR4Milestone`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `hour` | `int` | Hours after first NEOCP posting |
+| `n_observations` | `int` | Observations accumulated |
+| `arc_length_minutes` | `float` | Total arc length |
+| `mean_magnitude_v` | `float` | V-band magnitude |
+| `rate_arcsec_min` | `float` | Sky-plane motion rate |
+| `prob_neo_estimate` | `float` | Model P(NEO) at this moment |
+| `prob_pha_estimate` | `float` | Model P(PHA) at this moment |
+| `is_pha` | `bool` | True when P(PHA) ≥ 0.5 |
+| `event` | `str` | Machine-readable event key (e.g. `torino3_threshold`) |
+| `event_description` | `str` | Human summary |
+| `narrative_context` | `str` | Observer-voice narrative |
+
+**NN-10 alert note:** `POST /api/replay/yr4/alert` bypasses the cache layer entirely. Every call generates fresh Opus 4.7 output. Rate-limited to 1 call per 10 seconds.
+
 ## What is not yet implemented
 
-- `/api/schedule` — Day 3+ (optimizer / ranking-aware scheduling).
-- Managed Agent integration — Day 3.
-- Real Vereš 2025 training data — v1.1 post-hackathon (synthetic placeholder used in v0.1).
+- `/api/schedule` — ranking-aware follow-up scheduling (post-hackathon).
+- Real Vereš 2025 training data — v1.1 post-hackathon (synthetic placeholder in v0.1).
+- Sky visualization overlay (deferred from Day 3 scope).
