@@ -6,6 +6,18 @@
 
 ---
 
+## Planetary context
+
+NASA tracks [more than 37,000 known Near-Earth Objects](https://cneos.jpl.nasa.gov/stats/totals.html). That population — plus its close-approach geometry — is what neo-triage exists to serve.
+
+![NEO population visualised via NASA Eyes on Asteroids](docs/demo-assets/nasa-eyes-neo-population.png)
+*NASA / JPL Eyes on Asteroids — live view on 2026-04-23. Every labelled point is a catalogued NEO or mission target; the diffuse field is the main asteroid belt.*
+
+![101955 Bennu — a well-characterised NEO](docs/demo-assets/nasa-eyes-bennu-closeup.png)
+*101955 Bennu, the OSIRIS-REx target. Every asteroid with a nonzero impact_probability runs through the same close-approach calculation — neo-triage consumes that enrichment from JPL HORIZONS / Sentry to compute the Torino Scale client-side.*
+
+Screenshots courtesy [NASA / JPL Eyes on Asteroids](https://eyes.nasa.gov/apps/asteroids/) (public outreach site).
+
 ## The problem
 
 When the Vera C. Rubin Observatory enters full operations, it will flood the planetary-defense community with roughly **130 Near-Earth Object candidates per night** — about 8× more than the current Minor Planet Center confirmation page posts. Roughly **8% are genuine NEOs**; the rest are main-belt asteroids, satellites, or tracklet artifacts. Human observers cannot read every tracklet and still take the right shots.
@@ -145,4 +157,7 @@ MIT — see [LICENSE](./LICENSE).
 - **Anthropic** for Opus 4.7 and the hackathon credits
 - **Cerebral Valley** for running the event
 - **Vera C. Rubin Observatory / LSST** for the motivation — the flood is coming
+- **NASA JPL Center for Near-Earth Object Studies (CNEOS)** — public NEO catalog and Sentry close-approach data model
+- **NASA / JPL Eyes on Asteroids** — planetary-context screenshots
+- **R.P. Binzel (2000)** — the Torino Impact Hazard Scale, the two-axis table this project implements
 - **Minor Planet Center** for the NEOCP interface we augment
