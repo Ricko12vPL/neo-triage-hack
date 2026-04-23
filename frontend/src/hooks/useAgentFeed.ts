@@ -34,8 +34,11 @@ export function useAgentFeed(): AgentFeed {
 
     function connect() {
       if (unmounted.current) return;
+      const envUrl = import.meta.env.VITE_WS_URL as string | undefined;
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-      const url = `${protocol}://${window.location.host}${WS_PATH}`;
+      const url = envUrl && envUrl.length > 0
+        ? envUrl
+        : `${protocol}://${window.location.host}${WS_PATH}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
       setConnectionStatus("connecting");
