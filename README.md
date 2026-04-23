@@ -53,10 +53,11 @@ When the Vera C. Rubin Observatory enters full operations, it will flood the pla
 
 ## Live demo
 
-- **Frontend (Vercel):** _pending Day 5 deploy_
-- **Backend (Railway):** _pending Day 5 deploy_
+- **Frontend (Vercel):** https://neo-triage-hack.vercel.app
+- **Backend (Railway):** https://neo-triage-backend-production.up.railway.app
+- **Health check:** https://neo-triage-backend-production.up.railway.app/health
 - **Source:** https://github.com/Ricko12vPL/neo-triage-hack
-- **Demo video:** `docs/demo-assets/demo.mp4`
+- **Demo video:** `docs/demo-assets/demo.mp4` _(recording Friday 2026-04-24)_
 
 ## Architecture
 
