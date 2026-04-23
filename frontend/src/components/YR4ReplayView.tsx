@@ -86,8 +86,8 @@ export function YR4ReplayView({ timeline }: Props) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Timeline scrubber */}
-      <div className="border-b border-zinc-800 bg-zinc-950/60 px-6 py-4">
-        <div className="mb-3 flex items-center justify-between">
+      <div className="border-b border-zinc-800 bg-zinc-950/60 px-4 py-4 md:px-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <div className="text-[11px] uppercase tracking-wider text-zinc-500">
             2024 YR4 — event timeline
           </div>
@@ -133,13 +133,15 @@ export function YR4ReplayView({ timeline }: Props) {
                   <span
                     className={[
                       "absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+                      // On mobile only the demo-critical Torino 3 label is kept;
+                      // the others would overlap their neighbours at 375 px.
                       m.event === "torino3_threshold"
                         ? "rounded bg-red-900/80 text-red-300"
                         : m.event === "stand_down"
-                          ? "rounded bg-zinc-800 text-zinc-400"
+                          ? "hidden md:inline rounded bg-zinc-800 text-zinc-400"
                           : m.event === "global_alert"
-                            ? "rounded bg-red-900/60 text-red-400"
-                            : "text-zinc-600",
+                            ? "hidden md:inline rounded bg-red-900/60 text-red-400"
+                            : "hidden md:inline text-zinc-600",
                     ].join(" ")}
                   >
                     {eventLabel}
@@ -166,9 +168,9 @@ export function YR4ReplayView({ timeline }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {/* Left: milestone state */}
-        <div className="w-64 shrink-0 overflow-y-auto border-r border-zinc-800 bg-zinc-950/30 px-4 py-4">
+        <div className="max-h-[40vh] shrink-0 overflow-y-auto border-b border-zinc-800 bg-zinc-950/30 px-4 py-4 md:max-h-none md:w-64 md:border-b-0 md:border-r">
           {selectedMilestone ? (
             <MilestoneCard milestone={selectedMilestone} />
           ) : (
