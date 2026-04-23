@@ -181,7 +181,7 @@ export default function App() {
 
   return (
     <div className="grid h-screen grid-rows-[auto_1fr] bg-zinc-950 text-zinc-100">
-      <header className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950/80 px-5 py-3 backdrop-blur">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-zinc-800 bg-zinc-950/80 px-5 py-3 backdrop-blur">
         <div>
           <h1 className="text-sm font-semibold tracking-tight text-zinc-100">
             neo-triage
@@ -191,7 +191,7 @@ export default function App() {
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {/* Mode tabs */}
           <div className="flex rounded bg-zinc-900 p-0.5 text-[11px]">
             <button
@@ -240,7 +240,7 @@ export default function App() {
       />
 
       {mode === "live" ? (
-        <main className="grid grid-cols-[320px_1fr] overflow-hidden">
+        <main className="grid grid-rows-[auto_1fr] overflow-hidden md:grid-rows-none md:grid-cols-[320px_1fr]">
           <CandidateList
             candidates={displayCandidates}
             selected={selected}
