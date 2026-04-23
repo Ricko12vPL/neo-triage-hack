@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, streamBriefing } from "./api/client";
 import type { BriefingChunk, RankedCandidate, YR4Milestone } from "./api/types";
 import { BriefingPanel, type BriefingHistoryEntry } from "./components/BriefingPanel";
@@ -13,8 +13,15 @@ import { useAgentFeed } from "./hooks/useAgentFeed";
 import { useObserverLocation } from "./hooks/useObserverLocation";
 import type { AgentEventNewCandidate } from "./api/types";
 
+// Three.js is heavy — lazy-load only when user opens Sky View tab.
+const SkyViewContainer = lazy(() =>
+  import("./components/SkyViewContainer").then((m) => ({
+    default: m.SkyViewContainer,
+  })),
+);
+
 type StreamStatus = "idle" | "streaming" | "done" | "cache_hit" | "error";
-type AppMode = "live" | "yr4replay";
+type AppMode = "live" | "skyview" | "yr4replay";
 
 const YR4_CROSS_SURVEY_CONTEXT =
   "ATLAS covered this region 6h ago to V=19.7 and saw nothing. CSS covered 14h ago to V=20.2 and saw nothing.";
@@ -206,6 +213,17 @@ export default function App() {
               Live Feed
             </button>
             <button
+              onClick={() => setMode("skyview")}
+              className={[
+                "rounded px-3 py-1 font-mono uppercase tracking-wider transition-colors",
+                mode === "skyview"
+                  ? "bg-sky-900/80 text-sky-200"
+                  : "text-zinc-500 hover:text-zinc-300",
+              ].join(" ")}
+            >
+              Sky View
+            </button>
+            <button
               onClick={() => setMode("yr4replay")}
               className={[
                 "rounded px-3 py-1 font-mono uppercase tracking-wider transition-colors",
@@ -239,7 +257,7 @@ export default function App() {
         }}
       />
 
-      {mode === "live" ? (
+      {mode === "live" && (
         <main className="grid grid-rows-[auto_1fr] overflow-hidden md:grid-rows-none md:grid-cols-[320px_1fr]">
           <CandidateList
             candidates={displayCandidates}
@@ -284,7 +302,30 @@ export default function App() {
             )}
           </section>
         </main>
-      ) : (
+      )}
+
+      {mode === "skyview" && (
+        <main className="overflow-hidden">
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                Loading sky view…
+              </div>
+            }
+          >
+            <SkyViewContainer
+              candidates={displayCandidates}
+              selectedTrksub={selected}
+              onSelectCandidate={(trksub) => {
+                setMode("live");
+                handleSelect(trksub);
+              }}
+            />
+          </Suspense>
+        </main>
+      )}
+
+      {mode === "yr4replay" && (
         <main className="overflow-hidden">
           {yr4Timeline.length > 0 ? (
             <YR4ReplayView timeline={yr4Timeline} />
