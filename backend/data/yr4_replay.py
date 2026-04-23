@@ -174,8 +174,9 @@ YR4_TIMELINE: list[YR4Milestone] = [
         ),
         narrative_context=(
             "Impact probability dropped from 2.4% to 0.5% as new observations ruled "
-            "out impact trajectories. Torino backs off to 1. Object is real NEO, "
-            "definitively. Whether it impacts in 2032 is still a live question."
+            "out impact trajectories. Torino backs off to 2 — still worth watching. "
+            "Object is real NEO, definitively. Whether it impacts in 2032 is still "
+            "a live question."
         ),
         impact_probability=0.005,
         absolute_magnitude_h=23.8,
@@ -194,15 +195,16 @@ YR4_TIMELINE: list[YR4Milestone] = [
         event="stand_down",
         event_description=(
             "7-day arc from 142 observations across 31 observatories. "
-            "Impact probability below 0.01%. Stand-down issued. "
+            "Impact probability below 1-in-a-billion. Stand-down issued. "
             "Object remains a known NEO."
         ),
         narrative_context=(
-            "7 days of global observation reduced impact probability from 2.4% to "
-            "3e-5. Torino back to 0. Not formally zero — a small residual "
-            "uncertainty remains in the 2032 window. The follow-up network did its job."
+            "7 days of global observation reduced impact probability below the "
+            "Torino-0 threshold (1e-8). Not formally zero — a small residual "
+            "uncertainty remains in the 2032 window — but below routine-monitoring "
+            "attention. The follow-up network did its job."
         ),
-        impact_probability=3e-5,
+        impact_probability=5e-9,
         absolute_magnitude_h=23.7,
     ),
 ]
