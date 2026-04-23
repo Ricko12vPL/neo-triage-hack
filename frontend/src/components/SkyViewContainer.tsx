@@ -1,24 +1,30 @@
 import { useState } from "react";
 import type { RankedCandidate } from "../api/types";
 import { SkyViewPanel } from "./SkyViewPanel";
+import { CandidateDetailsPanel } from "./CandidateDetailsPanel";
 
 interface Props {
   candidates: RankedCandidate[];
   selectedTrksub: string | null;
-  onSelectCandidate: (trksub: string) => void;
+  onOpenFullBriefing: (trksub: string) => void;
 }
 
-// Deep link straight to the "home" route — NASA Eyes' full solar-system
-// catalog view with all 37k NEOs rendered. The bare /apps/asteroids/ URL
-// goes through a splash-screen transition; /#/home bypasses it.
 const NASA_EYES_URL = "https://eyes.nasa.gov/apps/asteroids/#/home";
 
 export function SkyViewContainer({
   candidates,
   selectedTrksub,
-  onSelectCandidate,
+  onOpenFullBriefing,
 }: Props) {
   const [iframeFailed, setIframeFailed] = useState(false);
+  // Sky-view-local selection — opens the details panel; does NOT switch tabs.
+  // Seeded from the top-level selection so the user doesn't lose context when
+  // they navigate in from Live Feed.
+  const [inspectedTrksub, setInspectedTrksub] = useState<string | null>(
+    selectedTrksub,
+  );
+
+  const inspected = candidates.find((c) => c.trksub === inspectedTrksub) ?? null;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -42,7 +48,7 @@ export function SkyViewContainer({
           </div>
         </div>
         <div className="pointer-events-none absolute bottom-3 left-4 z-10 text-[9px] font-mono uppercase tracking-wider text-zinc-600">
-          Celestial sphere · drag to rotate · scroll to zoom · click point to brief
+          Celestial sphere · drag to rotate · scroll to zoom · click a point to inspect
         </div>
         <div className="pointer-events-none absolute bottom-3 right-4 z-10 text-[9px] font-mono uppercase tracking-wider text-zinc-600">
           <span className="text-violet-500/80">— —</span> ecliptic ·{" "}
@@ -50,9 +56,19 @@ export function SkyViewContainer({
         </div>
         <SkyViewPanel
           candidates={candidates}
-          selectedTrksub={selectedTrksub}
-          onSelectCandidate={onSelectCandidate}
+          selectedTrksub={inspectedTrksub}
+          onCandidateClick={(trksub) => setInspectedTrksub(trksub)}
         />
+
+        {inspected && (
+          <CandidateDetailsPanel
+            candidate={inspected}
+            onClose={() => setInspectedTrksub(null)}
+            onOpenFullBriefing={() => {
+              onOpenFullBriefing(inspected.trksub);
+            }}
+          />
+        )}
       </div>
 
       {/* BOTTOM — NASA EYES CONTEXT */}

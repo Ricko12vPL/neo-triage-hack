@@ -316,7 +316,7 @@ export default function App() {
             <SkyViewContainer
               candidates={displayCandidates}
               selectedTrksub={selected}
-              onSelectCandidate={(trksub) => {
+              onOpenFullBriefing={(trksub) => {
                 setMode("live");
                 handleSelect(trksub);
               }}
