@@ -92,9 +92,9 @@ export function YR4ReplayView({ timeline }: Props) {
             2024 YR4 — event timeline
           </div>
           <div className="font-mono text-[10px] text-zinc-600">
-            P(impact): 0.00 →{" "}
+            P(impact): 0 →{" "}
             <span className="text-red-400">2.4%</span> →{" "}
-            <span className="text-zinc-500">3e-5</span>
+            <span className="text-zinc-500">~0</span>
           </div>
         </div>
         <div className="relative flex items-center gap-0">
