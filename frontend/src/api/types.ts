@@ -33,6 +33,9 @@ export interface Candidate {
   arc_length_minutes: number;
   digest2_neo_noid: number;
   ecliptic_latitude_deg: number;
+  // Optional Torino inputs, enriched from orbit determination.
+  impact_probability?: number | null;
+  absolute_magnitude_h?: number | null;
 }
 
 export interface Prediction {
@@ -131,4 +134,6 @@ export interface YR4Milestone {
   event: string;
   event_description: string;
   narrative_context: string;
+  impact_probability: number;
+  absolute_magnitude_h: number;
 }

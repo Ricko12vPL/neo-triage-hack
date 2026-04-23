@@ -112,7 +112,11 @@ export function PredictionCard({ candidate, observerLocation }: Props) {
           variant="neo"
         />
         <HeroProb label="P(PHA)" value={p.prob_pha} variant="pha" />
-        <TorinoBadge prob_pha={p.prob_pha} variant="card" />
+        <TorinoBadge
+          impact_probability={c.impact_probability}
+          absolute_magnitude_h={c.absolute_magnitude_h}
+          variant="card"
+        />
         <div className="rounded-sm border border-zinc-800 bg-zinc-900/40 px-3 py-2.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-500">
             MAP class

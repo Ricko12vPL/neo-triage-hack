@@ -27,6 +27,11 @@ class YR4Milestone:
     event: str
     event_description: str
     narrative_context: str
+    # Torino-Scale inputs — track the real 2024 YR4 historical record.
+    # impact_probability is Sentry/NEODyS-style P(impact) in the 2032 window.
+    # absolute_magnitude_h is the H from the best orbit at each milestone.
+    impact_probability: float = 0.0
+    absolute_magnitude_h: float = 24.0
 
 
 YR4_TIMELINE: list[YR4Milestone] = [
@@ -50,6 +55,8 @@ YR4_TIMELINE: list[YR4Milestone] = [
             "A faint, fast-moving object. Tracklet thin but motion consistent with NEO. "
             "Not enough arc to rule out MBA."
         ),
+        impact_probability=0.0,
+        absolute_magnitude_h=24.5,
     ),
     YR4Milestone(
         hour=6,
@@ -72,6 +79,8 @@ YR4_TIMELINE: list[YR4Milestone] = [
             "If this were MBA at V~19.7, ATLAS would have caught it with ~80% probability. "
             "The silence pushes P(NEO) up. Rate stable at 3.4 arcsec/min."
         ),
+        impact_probability=0.008,
+        absolute_magnitude_h=24.2,
     ),
     YR4Milestone(
         hour=12,
@@ -94,6 +103,8 @@ YR4_TIMELINE: list[YR4Milestone] = [
             "12-hour arc is too short to constrain aphelion. "
             "Impact trajectories remain in the solution space."
         ),
+        impact_probability=0.015,
+        absolute_magnitude_h=24.0,
     ),
     YR4Milestone(
         hour=18,
@@ -108,15 +119,18 @@ YR4_TIMELINE: list[YR4Milestone] = [
         is_pha=True,
         event="torino3_threshold",
         event_description=(
-            "Threat indicator reaches Torino 5 — P(PHA)=0.91. "
+            "Threat indicator reaches Torino 3 — impact probability 2.4%, "
+            "~50 m diameter (H≈24), ~10 MT yield. "
             "Possible impact December 2032. Global alert pending."
         ),
         narrative_context=(
             "This is the moment. 28 observations over 18 hours from 7 observatories. "
             "Orbit solution converged enough to place several impact solutions in the "
-            "remaining uncertainty volume. P(PHA)=0.91 is not a rounding error. "
-            "The follow-up network needs this now."
+            "remaining uncertainty volume. Impact probability 2.4% with a 50 m body — "
+            "Torino 3 by Binzel 2000. The follow-up network needs this now."
         ),
+        impact_probability=0.024,
+        absolute_magnitude_h=24.0,
     ),
     YR4Milestone(
         hour=30,
@@ -136,9 +150,11 @@ YR4_TIMELINE: list[YR4Milestone] = [
         ),
         narrative_context=(
             "47 observations, 30-hour arc. Object is confirmed NEO. "
-            "P(PHA)=0.97 — this is as high as it will go before more observations arrive. "
+            "Impact probability 1.9% with 50 m body — still Torino 3, still worth the alert. "
             "Every optical telescope that can reach Dec -14° is being asked to observe."
         ),
+        impact_probability=0.019,
+        absolute_magnitude_h=23.9,
     ),
     YR4Milestone(
         hour=72,
@@ -157,10 +173,12 @@ YR4_TIMELINE: list[YR4Milestone] = [
             "Uncertainty ellipse shrinking — most impact solutions ruled out."
         ),
         narrative_context=(
-            "P(PHA) dropped from 0.97 to 0.23 as new observations ruled out "
-            "impact trajectories. Object is real NEO, definitively. "
-            "Whether it impacts in 2032 is still a live question."
+            "Impact probability dropped from 2.4% to 0.5% as new observations ruled "
+            "out impact trajectories. Torino backs off to 1. Object is real NEO, "
+            "definitively. Whether it impacts in 2032 is still a live question."
         ),
+        impact_probability=0.005,
+        absolute_magnitude_h=23.8,
     ),
     YR4Milestone(
         hour=168,
@@ -176,13 +194,16 @@ YR4_TIMELINE: list[YR4Milestone] = [
         event="stand_down",
         event_description=(
             "7-day arc from 142 observations across 31 observatories. "
-            "P(PHA) below 5%. Stand-down issued. Object remains a known NEO."
+            "Impact probability below 0.01%. Stand-down issued. "
+            "Object remains a known NEO."
         ),
         narrative_context=(
-            "7 days of global observation reduced P(PHA) from 0.97 to 0.04. "
-            "Not zero — a small but real residual uncertainty remains in the 2032 window. "
-            "The follow-up network did its job."
+            "7 days of global observation reduced impact probability from 2.4% to "
+            "3e-5. Torino back to 0. Not formally zero — a small residual "
+            "uncertainty remains in the 2032 window. The follow-up network did its job."
         ),
+        impact_probability=3e-5,
+        absolute_magnitude_h=23.7,
     ),
 ]
 

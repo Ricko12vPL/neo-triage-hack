@@ -30,7 +30,15 @@ ChunkType = Literal["thinking", "reasoning", "text", "meta", "done", "error"]
 
 
 class Candidate(BaseModel):
-    """A NEOCP tracklet — observed quantities only, no model output."""
+    """A NEOCP tracklet — observed quantities plus two optional enrichments.
+
+    `impact_probability` and `absolute_magnitude_h` are not derivable from the
+    tracklet alone; they come from orbit determination + catalogue cross-match
+    (e.g. JPL HORIZONS, MPC orbit database, Sentry/NEODyS close-approach
+    tables). For real NEOCP candidates they will be None until enrichment.
+    For mock fixtures and the YR4 historical replay, we populate plausible
+    values so the Torino Scale can be computed end-to-end.
+    """
 
     trksub: str = Field(..., description="MPC submitter tracklet designation")
     ra_deg: float = Field(..., ge=0, lt=360, description="RA J2000 (degrees)")
@@ -43,6 +51,23 @@ class Candidate(BaseModel):
     arc_length_minutes: float = Field(..., gt=0, description="Tracklet time span (minutes)")
     digest2_neo_noid: int = Field(..., ge=0, le=100, description="MPC digest2 NEO-NoID score")
     ecliptic_latitude_deg: float = Field(..., description="Ecliptic beta (degrees)")
+    impact_probability: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Probability of Earth impact in the near-term close-approach window "
+            "(0-1 fraction). Enrichment from orbit determination; None until an "
+            "orbit is solved."
+        ),
+    )
+    absolute_magnitude_h: float | None = Field(
+        default=None,
+        description=(
+            "Absolute magnitude H (V band, alpha=0, 1 AU). Size proxy — "
+            "required alongside impact_probability to classify Torino severity."
+        ),
+    )
 
 
 class Prediction(BaseModel):

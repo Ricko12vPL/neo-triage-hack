@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { streamReplayBrief, streamYr4Alert } from "../api/client";
 import type { BriefingChunk, YR4Milestone } from "../api/types";
 import { BriefingPanel } from "./BriefingPanel";
-import { computeTorinoIndicator } from "../lib/torino";
+import { computeTorinoFromCandidate } from "../lib/torino";
 
 interface Props {
   timeline: YR4Milestone[];
@@ -11,8 +11,8 @@ interface Props {
 type StreamStatus = "idle" | "streaming" | "done" | "cache_hit" | "error";
 
 const EVENT_LABELS: Record<string, string> = {
-  first_post: "FIRST POST",
-  torino3_threshold: "TORINO 5",
+  first_posting: "FIRST POST",
+  torino3_threshold: "TORINO 3",
   global_alert: "GLOBAL ALERT",
   stand_down: "STAND DOWN",
 };
@@ -29,7 +29,13 @@ export function YR4ReplayView({ timeline }: Props) {
   const abortRef = useRef<AbortController | null>(null);
 
   const selectedMilestone = timeline.find((m) => m.hour === selectedHour) ?? null;
-  const torino3Reached = selectedHour !== null && selectedHour >= 18;
+  const selectedTorino = selectedMilestone
+    ? computeTorinoFromCandidate(
+        selectedMilestone.impact_probability,
+        selectedMilestone.absolute_magnitude_h,
+      )
+    : null;
+  const torino3Reached = (selectedTorino?.scale ?? 0) >= 3;
 
   const selectMilestone = useCallback(
     async (hour: number) => {
@@ -86,9 +92,9 @@ export function YR4ReplayView({ timeline }: Props) {
             2024 YR4 — event timeline
           </div>
           <div className="font-mono text-[10px] text-zinc-600">
-            P(PHA): 0.10 →{" "}
-            <span className="text-red-400">0.97</span> →{" "}
-            <span className="text-zinc-500">0.04</span>
+            P(impact): 0.00 →{" "}
+            <span className="text-red-400">2.4%</span> →{" "}
+            <span className="text-zinc-500">3e-5</span>
           </div>
         </div>
         <div className="relative flex items-center gap-0">
@@ -103,12 +109,16 @@ export function YR4ReplayView({ timeline }: Props) {
           />
           {timeline.map((m) => {
             const active = m.hour === selectedHour;
+            const milestoneTorino = computeTorinoFromCandidate(
+              m.impact_probability,
+              m.absolute_magnitude_h,
+            );
             const nodeColor =
-              m.prob_pha_estimate >= 0.9
+              milestoneTorino.scale >= 4
                 ? "border-red-500 bg-red-950"
-                : m.prob_pha_estimate >= 0.5
+                : milestoneTorino.scale >= 3
                   ? "border-orange-500 bg-orange-950"
-                  : m.prob_pha_estimate >= 0.3
+                  : milestoneTorino.scale >= 2
                     ? "border-amber-500 bg-amber-950"
                     : "border-zinc-600 bg-zinc-900";
             const eventLabel = EVENT_LABELS[m.event] ?? null;
@@ -188,7 +198,7 @@ export function YR4ReplayView({ timeline }: Props) {
             >
               <div className="mb-3 flex items-center gap-3">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-red-400">
-                  ⚠ Torino Scale 5 — Global Alert
+                  ⚠ {selectedTorino?.label ?? "Torino 3"} — Global Alert
                 </span>
                 <button
                   onClick={generateAlert}
@@ -283,9 +293,32 @@ function MilestoneCard({ milestone: m }: { milestone: YR4Milestone }) {
         </div>
       </div>
 
+      <div className="space-y-1 rounded border border-zinc-800 bg-zinc-900/60 px-3 py-2 font-mono">
+        <div className="text-[10px] uppercase tracking-wider text-zinc-600">
+          Orbit enrichment
+        </div>
+        <div>
+          <span className="text-zinc-500">P(impact) = </span>
+          <span className={m.impact_probability >= 0.01 ? "text-red-400" : "text-zinc-300"}>
+            {m.impact_probability >= 1e-4
+              ? `${(m.impact_probability * 100).toFixed(2)}%`
+              : m.impact_probability.toExponential(1)}
+          </span>
+        </div>
+        <div>
+          <span className="text-zinc-500">H = </span>
+          <span className="text-zinc-300">
+            {m.absolute_magnitude_h.toFixed(1)} mag
+          </span>
+        </div>
+      </div>
+
       {/* Torino indicator for this milestone */}
       {(() => {
-        const torino = computeTorinoIndicator(m.prob_pha_estimate);
+        const torino = computeTorinoFromCandidate(
+          m.impact_probability,
+          m.absolute_magnitude_h,
+        );
         return torino.scale >= 1 ? (
           <div className={`rounded-sm border px-2 py-1.5 text-center font-mono ${torino.colorClasses}`}>
             <div className="text-[10px] uppercase tracking-wider opacity-70">
@@ -294,6 +327,10 @@ function MilestoneCard({ milestone: m }: { milestone: YR4Milestone }) {
             <div className="text-lg font-semibold">{torino.scale}</div>
             <div className="text-[10px] leading-tight opacity-80">
               {torino.description}
+            </div>
+            <div className="mt-1 text-[9px] leading-tight opacity-60">
+              P(impact)={(m.impact_probability * 100).toFixed(2)}% · H=
+              {m.absolute_magnitude_h.toFixed(1)}
             </div>
           </div>
         ) : null;

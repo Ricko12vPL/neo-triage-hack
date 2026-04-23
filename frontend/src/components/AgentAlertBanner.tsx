@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AgentEventNewCandidate } from "../api/types";
-import { computeTorinoIndicator } from "../lib/torino";
+import { computeTorinoFromCandidate } from "../lib/torino";
 
 interface Alert {
   id: number;
@@ -40,7 +40,10 @@ export function AgentAlertBanner({ events, onSelect }: Props) {
     <div className="pointer-events-none fixed right-4 top-16 z-50 flex flex-col gap-2">
       {alerts.map((a) => {
         const isPha = a.event.prediction.prob_pha > 0.5;
-        const torino = computeTorinoIndicator(a.event.prediction.prob_pha);
+        const torino = computeTorinoFromCandidate(
+          a.event.candidate.impact_probability,
+          a.event.candidate.absolute_magnitude_h,
+        );
         return (
           <button
             key={a.id}

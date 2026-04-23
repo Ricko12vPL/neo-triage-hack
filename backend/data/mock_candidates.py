@@ -32,6 +32,8 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=18.0,
         digest2_neo_noid=91,
         ecliptic_latitude_deg=-14.8,
+        impact_probability=0.0008,
+        absolute_magnitude_h=22.3,
     ),
     Candidate(
         trksub="P21b7Pm",
@@ -45,6 +47,8 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=12.0,
         digest2_neo_noid=88,
         ecliptic_latitude_deg=-4.2,
+        impact_probability=0.00015,
+        absolute_magnitude_h=21.1,
     ),
     Candidate(
         trksub="P21c9Qr",
@@ -58,6 +62,8 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=24.0,
         digest2_neo_noid=85,
         ecliptic_latitude_deg=1.9,
+        impact_probability=0.0002,
+        absolute_magnitude_h=23.4,
     ),
     # --- Likely main-belt contaminants --------------------------------
     Candidate(
@@ -126,6 +132,8 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=20.0,
         digest2_neo_noid=68,
         ecliptic_latitude_deg=-7.9,
+        impact_probability=4e-6,
+        absolute_magnitude_h=22.9,
     ),
     Candidate(
         trksub="P21i6Ee",
@@ -139,8 +147,11 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=15.0,
         digest2_neo_noid=72,
         ecliptic_latitude_deg=-11.8,
+        impact_probability=2e-5,
+        absolute_magnitude_h=22.7,
     ),
     # --- YR4 analog — demo hero ---------------------------------------
+    # Real 2024 YR4 peak-window values: IP ~2.4%, H ~24.0
     Candidate(
         trksub="P21YR4A",
         ra_deg=88.527,
@@ -153,5 +164,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=15.0,
         digest2_neo_noid=98,
         ecliptic_latitude_deg=0.5,
+        impact_probability=0.024,
+        absolute_magnitude_h=24.0,
     ),
 ]

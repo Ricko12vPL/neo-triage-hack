@@ -186,7 +186,11 @@ export function CandidateList({
                     </span>
                     <div className="flex items-center gap-1.5">
                       {vis && <VisibilityChip vis={vis} />}
-                      <TorinoBadge prob_pha={c.prediction.prob_pha} variant="inline" />
+                      <TorinoBadge
+                        impact_probability={c.impact_probability}
+                        absolute_magnitude_h={c.absolute_magnitude_h}
+                        variant="inline"
+                      />
                       <span
                         className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classBadgeColor(
                           c.prediction.map_class,

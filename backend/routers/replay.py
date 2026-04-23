@@ -51,6 +51,8 @@ def _milestone_to_candidate(m: YR4Milestone) -> Candidate:
         arc_length_minutes=m.arc_length_minutes,
         digest2_neo_noid=m.digest2_neo_noid,
         ecliptic_latitude_deg=-9.84,
+        impact_probability=m.impact_probability,
+        absolute_magnitude_h=m.absolute_magnitude_h,
     )
 
 

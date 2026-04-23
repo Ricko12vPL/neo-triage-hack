@@ -1,12 +1,20 @@
-import { computeTorinoIndicator } from "../lib/torino";
+import { computeTorinoFromCandidate } from "../lib/torino";
 
 interface Props {
-  prob_pha: number;
+  impact_probability: number | null | undefined;
+  absolute_magnitude_h: number | null | undefined;
   variant: "inline" | "card";
 }
 
-export function TorinoBadge({ prob_pha, variant }: Props) {
-  const torino = computeTorinoIndicator(prob_pha);
+export function TorinoBadge({
+  impact_probability,
+  absolute_magnitude_h,
+  variant,
+}: Props) {
+  const torino = computeTorinoFromCandidate(
+    impact_probability,
+    absolute_magnitude_h,
+  );
 
   if (variant === "inline") {
     // Only surface Torino 2+ in list rows — Torino 0/1 is visual noise
