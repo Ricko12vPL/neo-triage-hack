@@ -184,8 +184,8 @@ export function FamousNEODetailsPanel({ neo, onClose }: Props) {
             value={`${neo.orbit.orbital_period_years.toFixed(3)} yr`}
           />
           <Row
-            label="Ω · ω · M (J2000)"
-            value={`${neo.orbit.longitude_ascending_node_deg.toFixed(1)}° · ${neo.orbit.argument_periapsis_deg.toFixed(1)}° · ${neo.orbit.mean_anomaly_deg_j2000.toFixed(1)}°`}
+            label="Ω · ω · M (epoch)"
+            value={`${neo.orbit.longitude_ascending_node_deg.toFixed(1)}° · ${neo.orbit.argument_periapsis_deg.toFixed(1)}° · ${neo.orbit.mean_anomaly_deg_epoch.toFixed(1)}°`}
           />
         </Section>
 

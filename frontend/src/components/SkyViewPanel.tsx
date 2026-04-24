@@ -742,12 +742,22 @@ function useComputedFamousNEOs(): ComputedFamousNEO[] {
     const jd = currentJD();
     const earth = earthHeliocentricAtJD(jd);
     return FAMOUS_NEOS.map((neo) => {
-      const helio = heliocentricPositionAtJD(neo.orbit, jd);
+      const helio = heliocentricPositionAtJD(
+        neo.orbit,
+        jd,
+        neo.orbital_epoch_jd,
+      );
       const { ra_deg, dec_deg } = heliocentricToGeocentricCelestialSphere(
         helio,
         earth,
       );
-      const track = orbitGroundTrack(neo.orbit, 64, jd);
+      const track = orbitGroundTrack(
+        neo.orbit,
+        64,
+        jd,
+        undefined,
+        neo.orbital_epoch_jd,
+      );
       return { neo, ra_deg, dec_deg, track };
     });
   }, []);

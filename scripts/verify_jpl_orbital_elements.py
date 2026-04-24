@@ -1,18 +1,24 @@
 """
 Verify orbital elements in frontend/src/lib/famous_neos.ts against JPL Horizons.
 
-Fetches authoritative J2000 heliocentric ecliptic elements from the NASA/JPL
-Horizons web API and compares against the local catalog. Writes a Markdown
-report at docs/verification/jpl-orbital-elements-verification.md and prints
-the patched orbital-element block per object so they can be applied to the TS
-source.
+Fetches authoritative heliocentric ecliptic osculating elements from the
+NASA/JPL Horizons web API and compares against the local catalog. The
+reference epoch is configurable (defaults to today 12:00 UTC). Current-epoch
+elements give dramatically better sky accuracy than J2000 elements because
+they bake in 26 years of perturbation history.
+
+Writes a Markdown report at docs/verification/jpl-orbital-elements-verification.md
+and a patch file at reports/jpl-patches.txt ready for apply_jpl_patches.py.
 
 Usage:
-    python scripts/verify_jpl_orbital_elements.py
+    python scripts/verify_jpl_orbital_elements.py                 # epoch = today 12:00 UTC
+    python scripts/verify_jpl_orbital_elements.py --epoch j2000   # legacy mode
+    python scripts/verify_jpl_orbital_elements.py --epoch 2026-04-24
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
@@ -20,6 +26,7 @@ import time
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 AU_KM = 1.495978707e8
@@ -66,16 +73,23 @@ class HorizonsElements:
     source_block: str
 
 
-def fetch_horizons_elements(command: str) -> HorizonsElements:
-    """Query Horizons API for osculating elements at J2000 and parse."""
+def fetch_horizons_elements(command: str, epoch_date: datetime) -> HorizonsElements:
+    """Query Horizons API for osculating elements at `epoch_date` and parse.
+
+    Horizons returns the first sample inside [start, stop]; we request a
+    2-day window bracketing the epoch and take the first ($$SOE) record,
+    whose JD is used as the canonical epoch_jd for downstream propagation.
+    """
+    start_str = epoch_date.strftime("%Y-%m-%d")
+    stop_str = (epoch_date + timedelta(days=1)).strftime("%Y-%m-%d")
     params = {
         "format": "json",
         "COMMAND": f"'{command}'",
         "OBJ_DATA": "'NO'",
         "EPHEM_TYPE": "'ELEMENTS'",
         "CENTER": "'500@10'",
-        "START_TIME": "'2000-01-01'",
-        "STOP_TIME": "'2000-01-02'",
+        "START_TIME": f"'{start_str}'",
+        "STOP_TIME": f"'{stop_str}'",
         "STEP_SIZE": "'1 d'",
     }
     qs = "&".join(f"{k}={urllib.parse.quote(v, safe='')}" for k, v in params.items())
@@ -175,7 +189,7 @@ def parse_local_catalog(ts_path: Path) -> list[dict]:
             "inclination_deg": grab("inclination_deg"),
             "longitude_ascending_node_deg": grab("longitude_ascending_node_deg"),
             "argument_periapsis_deg": grab("argument_periapsis_deg"),
-            "mean_anomaly_deg_j2000": grab("mean_anomaly_deg_j2000"),
+            "mean_anomaly_deg_epoch": grab("mean_anomaly_deg_epoch"),
             "orbital_period_years": grab("orbital_period_years"),
         })
 
@@ -209,8 +223,8 @@ def compare(local: dict, jpl: HorizonsElements) -> dict:
                   jpl.argument_periapsis_deg,
                   angle_diff(local["argument_periapsis_deg"],
                              jpl.argument_periapsis_deg)),
-        "MA": (local["mean_anomaly_deg_j2000"], jpl.mean_anomaly_deg,
-               angle_diff(local["mean_anomaly_deg_j2000"],
+        "MA": (local["mean_anomaly_deg_epoch"], jpl.mean_anomaly_deg,
+               angle_diff(local["mean_anomaly_deg_epoch"],
                           jpl.mean_anomaly_deg)),
         "period": (local["orbital_period_years"], jpl.orbital_period_years,
                    rel_diff(local["orbital_period_years"], jpl.orbital_period_years)),
@@ -238,7 +252,7 @@ def verdict(cmp: dict) -> list[str]:
     return problems
 
 
-def format_patch(name: str, jpl: HorizonsElements) -> str:
+def format_patch(name: str, jpl: HorizonsElements, fetched_date: str) -> str:
     """Emit the replacement orbital-elements block matching the TS shape."""
     return (
         "    orbit: {\n"
@@ -247,13 +261,34 @@ def format_patch(name: str, jpl: HorizonsElements) -> str:
         f"      inclination_deg: {jpl.inclination_deg:.4f},\n"
         f"      longitude_ascending_node_deg: {jpl.longitude_ascending_node_deg:.4f},\n"
         f"      argument_periapsis_deg: {jpl.argument_periapsis_deg:.4f},\n"
-        f"      mean_anomaly_deg_j2000: {jpl.mean_anomaly_deg:.4f},\n"
+        f"      mean_anomaly_deg_epoch: {jpl.mean_anomaly_deg:.4f},\n"
         f"      orbital_period_years: {jpl.orbital_period_years:.4f},\n"
-        "    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24"
+        f"    }},  // JPL Horizons @ JD {jpl.epoch_jd:.1f}, fetched {fetched_date}"
     )
 
 
+def parse_epoch_arg(s: str) -> datetime:
+    """Accepts 'j2000', 'today', or an ISO date YYYY-MM-DD (UTC noon)."""
+    s = s.strip().lower()
+    if s in ("j2000", "2000-01-01"):
+        return datetime(2000, 1, 1, 12, 0, tzinfo=timezone.utc)
+    if s == "today":
+        return datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+    return datetime.strptime(s, "%Y-%m-%d").replace(hour=12, tzinfo=timezone.utc)
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--epoch",
+        default="today",
+        help="Epoch to request elements at: 'j2000', 'today' (default), or YYYY-MM-DD",
+    )
+    args = parser.parse_args()
+    epoch_dt = parse_epoch_arg(args.epoch)
+    fetched_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    print(f"Requesting elements at epoch: {epoch_dt.isoformat()}", file=sys.stderr)
+
     repo = Path(__file__).resolve().parent.parent
     ts_path = repo / "frontend/src/lib/famous_neos.ts"
     report_path = repo / "docs/verification/jpl-orbital-elements-verification.md"
@@ -277,29 +312,33 @@ def main() -> int:
             continue
         print(f"[FETCH] {name} ({command}) ...", file=sys.stderr)
         try:
-            jpl = fetch_horizons_elements(command)
+            jpl = fetch_horizons_elements(command, epoch_dt)
             cmp = compare(entry, jpl)
             comparisons.append(cmp)
-            patches.append(f"// {name}\n{format_patch(name, jpl)}\n")
+            patches.append(f"// {name}\n{format_patch(name, jpl, fetched_date)}\n")
         except Exception as exc:
             print(f"[FAIL] {name}: {exc}", file=sys.stderr)
             failed_fetches.append(name)
         time.sleep(0.8)  # be polite to Horizons
 
     # Report
+    epoch_iso = epoch_dt.strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         "# JPL Horizons Orbital Elements Verification",
         "",
         f"Generated: {time.strftime('%Y-%m-%d %H:%M %Z')}",
         "",
         "Source: NASA/JPL Horizons Web API (`https://ssd.jpl.nasa.gov/api/horizons.api`).",
-        "Reference frame: Ecliptic J2000.0, Sun center (500@10). Epoch JD 2451545.0 (2000-01-01 12:00 TDB).",
+        f"Reference frame: Ecliptic equinox J2000.0, Sun center (500@10). Requested epoch: {epoch_iso}.",
+        "Each row shows the value stored in the local catalog vs the JPL value at the requested epoch.",
+        "When running with `--epoch today`, the mean anomaly is expected to differ dramatically from the"
+        " previous J2000-era catalog — that is the whole point of refreshing to a current epoch.",
         "",
-        "## Tolerances",
+        "## Tolerances (for matching within the same epoch)",
         "- Semi-major axis `a`: ≤ 0.5% relative",
         "- Eccentricity `e`: ≤ 0.01 absolute",
         "- Inclination `i`, Ω, ω: ≤ 0.5° absolute",
-        "- Mean anomaly `M` (J2000): ≤ 0.5° absolute",
+        "- Mean anomaly `M`: ≤ 0.5° absolute (only meaningful when local + JPL are at the same epoch)",
         "- Period `T`: ≤ 0.5% relative",
         "",
         "## Summary",

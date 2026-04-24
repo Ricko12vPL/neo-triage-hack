@@ -224,7 +224,11 @@ function useComputedOrbits(): ComputedOrbit[] {
     const jd = currentJD();
     return FAMOUS_NEOS.map((neo) => {
       const ellipse = orbitEllipsePoints(neo.orbit, 128);
-      const currentPos = heliocentricPositionAtJD(neo.orbit, jd);
+      const currentPos = heliocentricPositionAtJD(
+        neo.orbit,
+        jd,
+        neo.orbital_epoch_jd,
+      );
       return {
         neo,
         // Note: Three.js uses right-handed Y-up but our kepler frame is

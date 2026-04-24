@@ -35,7 +35,14 @@ export interface OrbitalElements {
   inclination_deg: number;
   longitude_ascending_node_deg: number;
   argument_periapsis_deg: number;
-  mean_anomaly_deg_j2000: number;
+  /**
+   * Mean anomaly (degrees) at the reference epoch. The reference epoch is
+   * J2000 (JD 2451545.0) unless `epoch_jd` is passed to the propagation
+   * function. Current-epoch elements give dramatically better sky
+   * accuracy than hand-propagated J2000 elements for well-studied NEOs
+   * with many orbital revolutions since 2000.
+   */
+  mean_anomaly_deg_epoch: number;
   orbital_period_years: number;
 }
 
@@ -157,15 +164,22 @@ export function orbitalElementsToHeliocentricXYZ(
 /**
  * Heliocentric ecliptic position of a body with the given elements at a
  * specific Julian date.
+ *
+ * @param epoch_jd Epoch at which `elements.mean_anomaly_deg_epoch` is
+ *   valid. Defaults to J2000 (JD 2451545.0) for historical callers, but
+ *   any current-epoch source (e.g. Horizons "today") is strongly preferred
+ *   when available — J2000 propagation accumulates sky error at ~0.1°/yr
+ *   for typical NEOs, more for chaotic orbits.
  */
 export function heliocentricPositionAtJD(
   elements: OrbitalElements,
   jd: number,
+  epoch_jd: number = J2000_JD,
 ): Vec3 {
   const P_days = elements.orbital_period_years * 365.25;
   const n_deg_per_day = 360 / P_days;
-  const dt = jd - J2000_JD;
-  const M_deg = elements.mean_anomaly_deg_j2000 + n_deg_per_day * dt;
+  const dt = jd - epoch_jd;
+  const M_deg = elements.mean_anomaly_deg_epoch + n_deg_per_day * dt;
   const M_rad = deg2rad(M_deg);
   const E = solveKeplersEquation(M_rad, elements.eccentricity);
   const nu = eccentricToTrueAnomaly(E, elements.eccentricity);
@@ -249,13 +263,14 @@ export function orbitGroundTrack(
   samples: number = 64,
   startJD: number = currentJD(),
   spanDays?: number,
+  epoch_jd: number = J2000_JD,
 ): RADec[] {
   const period_days = elements.orbital_period_years * 365.25;
   const span = spanDays ?? Math.min(period_days, 730); // ≤ 2 yr
   const track: RADec[] = [];
   for (let k = 0; k < samples; k++) {
     const jd = startJD + (span * k) / (samples - 1);
-    const helio = heliocentricPositionAtJD(elements, jd);
+    const helio = heliocentricPositionAtJD(elements, jd, epoch_jd);
     const earth = earthHeliocentricAtJD(jd);
     track.push(heliocentricToGeocentricCelestialSphere(helio, earth));
   }

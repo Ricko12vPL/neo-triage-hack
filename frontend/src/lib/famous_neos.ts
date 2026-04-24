@@ -5,10 +5,15 @@
  * and orbit source for OrbitGroundTrack (sphere) + OrbitViewPanel (helio).
  *
  * Coordinates + elements sourced from JPL Horizons (ssd.jpl.nasa.gov).
- * Orbital elements are osculating heliocentric ecliptic J2000 at epoch JD
- * 2451545.0 (2000-01-01 12:00 TDB). Regenerated via
- * `scripts/verify_jpl_orbital_elements.py` + `scripts/apply_jpl_patches.py`.
- * Report: docs/verification/jpl-orbital-elements-verification.md.
+ * Orbital elements are osculating heliocentric ecliptic (equinox J2000);
+ * each entry declares its own `orbital_epoch_jd`, so kepler.ts propagates
+ * accurately for the current observation time. Refresh via
+ * `python scripts/verify_jpl_orbital_elements.py --epoch today` followed
+ * by `python scripts/apply_jpl_patches.py`. Current-epoch elements are
+ * strongly preferred over J2000 for visualisation — 26 years of Kepler
+ * drift from J2000 yields multi-degree sky error for well-studied NEOs.
+ * Reports: docs/verification/jpl-orbital-elements-verification.md and
+ * docs/verification/current-positions-verification.md.
  */
 
 export type NEOClass =
@@ -30,8 +35,13 @@ export interface OrbitalElements {
   longitude_ascending_node_deg: number;
   /** Argument of periapsis ω (degrees). */
   argument_periapsis_deg: number;
-  /** Mean anomaly at J2000 epoch (degrees). */
-  mean_anomaly_deg_j2000: number;
+  /**
+   * Mean anomaly (degrees) at the reference epoch `orbital_epoch_jd`.
+   * Historically this field was named `mean_anomaly_deg_j2000` when all
+   * elements were stored at the J2000 epoch; for current-epoch elements
+   * the name `_epoch` is literal about the reference time.
+   */
+  mean_anomaly_deg_epoch: number;
   /** Orbital period (years). Derived from a via Kepler III for quick access. */
   orbital_period_years: number;
 }
@@ -96,15 +106,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.044,
     rotation_period_hours: 4.297,
     orbit: {
-      semi_major_axis_au: 1.128924,
-      eccentricity: 0.204653,
-      inclination_deg: 6.0255,
-      longitude_ascending_node_deg: 2.1786,
-      argument_periapsis_deg: 65.6720,
-      mean_anomaly_deg_j2000: 35.0071,
-      orbital_period_years: 1.1995,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 1.125985,
+      eccentricity: 0.203700,
+      inclination_deg: 6.0329,
+      longitude_ascending_node_deg: 1.9675,
+      argument_periapsis_deg: 66.4157,
+      mean_anomaly_deg_epoch: 34.4983,
+      orbital_period_years: 1.1948,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Apollo",
@@ -134,15 +144,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.23,
     rotation_period_hours: 30.4,
     orbit: {
-      semi_major_axis_au: 0.922342,
-      eccentricity: 0.191393,
-      inclination_deg: 3.3312,
-      longitude_ascending_node_deg: 204.6568,
-      argument_periapsis_deg: 126.0649,
-      mean_anomaly_deg_j2000: 231.6244,
-      orbital_period_years: 0.8858,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 0.922366,
+      eccentricity: 0.191142,
+      inclination_deg: 3.3409,
+      longitude_ascending_node_deg: 203.8974,
+      argument_periapsis_deg: 126.6769,
+      mean_anomaly_deg_epoch: 124.1482,
+      orbital_period_years: 0.8859,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Aten",
@@ -172,15 +182,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.15,
     rotation_period_hours: 2.26,
     orbit: {
-      semi_major_axis_au: 1.642077,
-      eccentricity: 0.383188,
-      inclination_deg: 3.3965,
-      longitude_ascending_node_deg: 73.4478,
-      argument_periapsis_deg: 318.8861,
-      mean_anomaly_deg_j2000: 65.5184,
-      orbital_period_years: 2.1043,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 1.642668,
+      eccentricity: 0.383147,
+      inclination_deg: 3.4139,
+      longitude_ascending_node_deg: 72.9858,
+      argument_periapsis_deg: 319.5841,
+      mean_anomaly_deg_epoch: 239.3242,
+      orbital_period_years: 2.1054,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Apollo",
@@ -210,15 +220,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.045,
     rotation_period_hours: 7.63,
     orbit: {
-      semi_major_axis_au: 1.189054,
-      eccentricity: 0.190016,
-      inclination_deg: 5.8845,
-      longitude_ascending_node_deg: 251.7268,
-      argument_periapsis_deg: 211.2723,
-      mean_anomaly_deg_j2000: 288.2727,
-      orbital_period_years: 1.2966,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 1.190952,
+      eccentricity: 0.191092,
+      inclination_deg: 5.8664,
+      longitude_ascending_node_deg: 251.2906,
+      argument_periapsis_deg: 211.6129,
+      mean_anomaly_deg_epoch: 27.4508,
+      orbital_period_years: 1.2997,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Apollo",
@@ -247,15 +257,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.29,
     rotation_period_hours: 12.1,
     orbit: {
-      semi_major_axis_au: 1.324946,
-      eccentricity: 0.280528,
-      inclination_deg: 1.7171,
-      longitude_ascending_node_deg: 71.6140,
-      argument_periapsis_deg: 160.1385,
-      mean_anomaly_deg_j2000: 43.7682,
-      orbital_period_years: 1.5251,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 1.324065,
+      eccentricity: 0.280170,
+      inclination_deg: 1.6209,
+      longitude_ascending_node_deg: 69.0744,
+      argument_periapsis_deg: 162.8432,
+      mean_anomaly_deg_epoch: 140.8928,
+      orbital_period_years: 1.5236,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Apollo",
@@ -284,15 +294,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.25,
     rotation_period_hours: 5.27,
     orbit: {
-      semi_major_axis_au: 1.458339,
-      eccentricity: 0.222758,
-      inclination_deg: 10.8284,
-      longitude_ascending_node_deg: 304.4157,
-      argument_periapsis_deg: 178.6458,
-      mean_anomaly_deg_j2000: 57.4125,
-      orbital_period_years: 1.7611,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 1.458249,
+      eccentricity: 0.222891,
+      inclination_deg: 10.8286,
+      longitude_ascending_node_deg: 304.2681,
+      argument_periapsis_deg: 178.9163,
+      mean_anomaly_deg_epoch: 36.7652,
+      orbital_period_years: 1.7610,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Amor",
@@ -321,15 +331,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.12,
     rotation_period_hours: 4.196,
     orbit: {
-      semi_major_axis_au: 2.920562,
-      eccentricity: 0.138241,
-      inclination_deg: 3.0934,
-      longitude_ascending_node_deg: 150.4660,
-      argument_periapsis_deg: 229.1191,
-      mean_anomaly_deg_j2000: 335.4933,
-      orbital_period_years: 4.9912,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.925238,
+      eccentricity: 0.134781,
+      inclination_deg: 3.0981,
+      longitude_ascending_node_deg: 149.9845,
+      argument_periapsis_deg: 229.9704,
+      mean_anomaly_deg_epoch: 70.7778,
+      orbital_period_years: 5.0032,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "MBA",
@@ -358,15 +368,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.09,
     rotation_period_hours: 9.074,
     orbit: {
-      semi_major_axis_au: 2.766494,
-      eccentricity: 0.078375,
-      inclination_deg: 10.5834,
-      longitude_ascending_node_deg: 80.4944,
-      argument_periapsis_deg: 73.9228,
-      mean_anomaly_deg_j2000: 6.0696,
-      orbital_period_years: 4.6015,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.765522,
+      eccentricity: 0.079669,
+      inclination_deg: 10.5880,
+      longitude_ascending_node_deg: 80.2486,
+      argument_periapsis_deg: 73.3024,
+      mean_anomaly_deg_epoch: 264.5502,
+      orbital_period_years: 4.5991,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "MBA",
@@ -396,15 +406,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.423,
     rotation_period_hours: 5.342,
     orbit: {
-      semi_major_axis_au: 2.361535,
-      eccentricity: 0.090023,
-      inclination_deg: 7.1339,
-      longitude_ascending_node_deg: 103.9514,
-      argument_periapsis_deg: 149.5868,
-      mean_anomaly_deg_j2000: 340.8879,
-      orbital_period_years: 3.6291,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.361428,
+      eccentricity: 0.090189,
+      inclination_deg: 7.1440,
+      longitude_ascending_node_deg: 103.7018,
+      argument_periapsis_deg: 151.4874,
+      mean_anomaly_deg_epoch: 68.6789,
+      orbital_period_years: 3.6289,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "MBA",
@@ -433,15 +443,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.326,
     rotation_period_hours: 5.22,
     orbit: {
-      semi_major_axis_au: 1.245518,
-      eccentricity: 0.335538,
-      inclination_deg: 13.3402,
-      longitude_ascending_node_deg: 337.3451,
-      argument_periapsis_deg: 276.7422,
-      mean_anomaly_deg_j2000: 348.1544,
-      orbital_period_years: 1.3901,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 1.245755,
+      eccentricity: 0.335492,
+      inclination_deg: 13.3369,
+      longitude_ascending_node_deg: 337.1358,
+      argument_periapsis_deg: 277.0295,
+      mean_anomaly_deg_epoch: 322.0712,
+      orbital_period_years: 1.3905,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Apollo",
@@ -469,15 +479,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.13,
     rotation_period_hours: null,
     orbit: {
-      semi_major_axis_au: 2.510551,
-      eccentricity: 0.634285,
-      inclination_deg: 0.4697,
-      longitude_ascending_node_deg: 128.3673,
-      argument_periapsis_deg: 274.6831,
-      mean_anomaly_deg_j2000: 283.7035,
-      orbital_period_years: 3.9780,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.543027,
+      eccentricity: 0.624663,
+      inclination_deg: 0.4481,
+      longitude_ascending_node_deg: 125.3701,
+      argument_periapsis_deg: 277.8570,
+      mean_anomaly_deg_epoch: 114.3322,
+      orbital_period_years: 4.0554,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Apollo",
@@ -506,15 +516,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.27,
     rotation_period_hours: 52.7,
     orbit: {
-      semi_major_axis_au: 2.191693,
-      eccentricity: 0.112863,
-      inclination_deg: 2.0978,
-      longitude_ascending_node_deg: 21.5875,
-      argument_periapsis_deg: 66.0780,
-      mean_anomaly_deg_j2000: 336.6538,
-      orbital_period_years: 3.2447,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.191733,
+      eccentricity: 0.112647,
+      inclination_deg: 2.0931,
+      longitude_ascending_node_deg: 21.3578,
+      argument_periapsis_deg: 66.9341,
+      mean_anomaly_deg_epoch: 15.6181,
+      orbital_period_years: 3.2448,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "MBA",
@@ -543,15 +553,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.24,
     rotation_period_hours: 15.12,
     orbit: {
-      semi_major_axis_au: 2.213023,
-      eccentricity: 0.063911,
-      inclination_deg: 4.2456,
-      longitude_ascending_node_deg: 120.7457,
-      argument_periapsis_deg: 8.3099,
-      mean_anomaly_deg_j2000: 250.5956,
-      orbital_period_years: 3.2922,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.212444,
+      eccentricity: 0.063189,
+      inclination_deg: 4.2474,
+      longitude_ascending_node_deg: 120.5510,
+      argument_periapsis_deg: 9.5222,
+      mean_anomaly_deg_epoch: 247.1353,
+      orbital_period_years: 3.2909,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "MBA",
@@ -580,15 +590,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.34,
     rotation_period_hours: 226.0,
     orbit: {
-      semi_major_axis_au: 2.341406,
-      eccentricity: 0.433460,
-      inclination_deg: 28.9493,
-      longitude_ascending_node_deg: 242.1584,
-      argument_periapsis_deg: 355.3543,
-      mean_anomaly_deg_j2000: 44.5945,
-      orbital_period_years: 3.5828,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.339484,
+      eccentricity: 0.434075,
+      inclination_deg: 29.0210,
+      longitude_ascending_node_deg: 241.8991,
+      argument_periapsis_deg: 356.1126,
+      mean_anomaly_deg_epoch: 165.0150,
+      orbital_period_years: 3.5784,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Amor",
@@ -617,15 +627,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.22,
     rotation_period_hours: 7.042,
     orbit: {
-      semi_major_axis_au: 2.209420,
-      eccentricity: 0.173562,
-      inclination_deg: 4.1027,
-      longitude_ascending_node_deg: 253.3216,
-      argument_periapsis_deg: 129.3066,
-      mean_anomaly_deg_j2000: 96.3529,
-      orbital_period_years: 3.2842,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.210178,
+      eccentricity: 0.173662,
+      inclination_deg: 4.1048,
+      longitude_ascending_node_deg: 252.9729,
+      argument_periapsis_deg: 130.0237,
+      mean_anomaly_deg_epoch: 99.1302,
+      orbital_period_years: 3.2859,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "MBA",
@@ -654,15 +664,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.24,
     rotation_period_hours: 4.634,
     orbit: {
-      semi_major_axis_au: 2.859690,
-      eccentricity: 0.045755,
-      inclination_deg: 1.1370,
-      longitude_ascending_node_deg: 324.3802,
-      argument_periapsis_deg: 112.2910,
-      mean_anomaly_deg_j2000: 244.2247,
-      orbital_period_years: 4.8360,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 2.863545,
+      eccentricity: 0.046051,
+      inclination_deg: 1.1303,
+      longitude_ascending_node_deg: 323.5370,
+      argument_periapsis_deg: 113.4470,
+      mean_anomaly_deg_epoch: 40.1171,
+      orbital_period_years: 4.8458,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "MBA",
@@ -691,15 +701,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.072,
     rotation_period_hours: 40.7,
     orbit: {
-      semi_major_axis_au: 3.118338,
-      eccentricity: 0.518959,
-      inclination_deg: 10.5414,
-      longitude_ascending_node_deg: 68.9669,
-      argument_periapsis_deg: 178.9110,
-      mean_anomaly_deg_j2000: 359.7106,
-      orbital_period_years: 5.5067,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 3.302522,
+      eccentricity: 0.466408,
+      inclination_deg: 10.5053,
+      longitude_ascending_node_deg: 66.9569,
+      argument_periapsis_deg: 184.5345,
+      mean_anomaly_deg_epoch: 251.9386,
+      orbital_period_years: 6.0017,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Comet",
@@ -729,15 +739,15 @@ export const FAMOUS_NEOS: FamousNEO[] = [
     albedo: 0.06,
     rotation_period_hours: 12.4,
     orbit: {
-      semi_major_axis_au: 3.511001,
-      eccentricity: 0.631409,
-      inclination_deg: 7.1223,
-      longitude_ascending_node_deg: 50.9911,
-      argument_periapsis_deg: 11.3501,
-      mean_anomaly_deg_j2000: 216.1536,
-      orbital_period_years: 6.5789,
-    },
-    orbital_epoch_jd: 2451545.0,
+      semi_major_axis_au: 3.458829,
+      eccentricity: 0.649607,
+      inclination_deg: 3.8666,
+      longitude_ascending_node_deg: 36.2965,
+      argument_periapsis_deg: 22.2338,
+      mean_anomaly_deg_epoch: 250.2255,
+      orbital_period_years: 6.4328,
+    },  // JPL Horizons @ JD 2461154.5, fetched 2026-04-24
+    orbital_epoch_jd: 2461154.5,
     data_source: "JPL Horizons (ssd.jpl.nasa.gov/api/horizons.api) ELEMENTS @500@10",
     last_verified_date: "2026-04-24",
     orbit_class: "Comet",
@@ -810,10 +820,12 @@ function validateFamousNeos(): void {
         `famous_neos: name/designation mismatch — name="${neo.name}", designation="${neo.designation}"`,
       );
     }
-    // Provenance — every entry must declare its epoch + source
-    if (!(Math.abs(neo.orbital_epoch_jd - 2451545.0) < 1e-3)) {
+    // Provenance — every entry must declare its epoch + source. Epoch may
+    // be any valid Julian Date; kepler.ts propagates from orbital_epoch_jd
+    // to the render time, so current-epoch sources give better accuracy.
+    if (!Number.isFinite(neo.orbital_epoch_jd) || neo.orbital_epoch_jd < 2400000) {
       throw new Error(
-        `famous_neos: "${neo.name}" has non-J2000 epoch (${neo.orbital_epoch_jd}) — kepler.ts assumes J2000`,
+        `famous_neos: "${neo.name}" has implausible orbital_epoch_jd (${neo.orbital_epoch_jd})`,
       );
     }
     if (!neo.data_source || !neo.data_source.trim()) {
