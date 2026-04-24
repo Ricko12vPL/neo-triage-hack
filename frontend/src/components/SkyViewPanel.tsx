@@ -373,8 +373,10 @@ function PrimaryMotionArc({
     [coneGeom, coneMat],
   );
 
-  // Fade-in on mount: 300 ms ease-out.
+  // Fade-in on mount: 300 ms ease-out. Three.js material props are the
+  // runtime animation target — mutation is the idiomatic R3F path.
   const fadeT = useRef(0);
+  /* eslint-disable react-hooks/immutability */
   useFrame((_, delta) => {
     if (fadeT.current >= 1) return;
     fadeT.current = Math.min(1, fadeT.current + delta / 0.3);
@@ -382,6 +384,7 @@ function PrimaryMotionArc({
     centerMat.opacity = 0.95 * eased;
     coneMat.opacity = 0.25 * eased;
   });
+  /* eslint-enable react-hooks/immutability */
 
   useEffect(() => {
     return () => {
@@ -850,6 +853,7 @@ function OrbitGroundTrack({
   // ORBIT_FADE_DURATION_SECONDS. Remount (keyed by designation) replays
   // this whenever the user clicks a different object.
   const fadeT = useRef(0);
+  /* eslint-disable react-hooks/immutability */
   useFrame((_, delta) => {
     if (fadeT.current >= 1) return;
     fadeT.current = Math.min(
@@ -860,6 +864,7 @@ function OrbitGroundTrack({
     const eased = 1 - Math.pow(1 - fadeT.current, 3);
     material.opacity = ORBIT_FADE_TARGET_OPACITY * eased;
   });
+  /* eslint-enable react-hooks/immutability */
 
   useEffect(() => {
     return () => {
@@ -1017,7 +1022,6 @@ export function SkyViewPanel({
       }
     }
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.debug(
         "[SkyView] candidate sync",
         {
