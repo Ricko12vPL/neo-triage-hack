@@ -66,6 +66,20 @@ export interface BriefingRequest {
   observer_location?: string | null;
 }
 
+export interface DataSourceReport {
+  primary_source: "mock" | "live_neocp" | "hybrid";
+  primary_description: string;
+  primary_count: number;
+  retrieved_at_utc: string;
+  live_feed_available: boolean;
+  live_feed_candidate_count: number | null;
+  live_feed_sample_trksubs: string[];
+  famous_neos_count: number;
+  famous_neos_epoch_jd: number;
+  famous_neos_last_verified: string;
+  notes: string;
+}
+
 export interface CostSummary {
   total_spent_usd: number;
   n_calls: number;

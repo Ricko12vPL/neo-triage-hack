@@ -4,6 +4,7 @@ import type { BriefingChunk, RankedCandidate, YR4Milestone } from "./api/types";
 import { BriefingPanel, type BriefingHistoryEntry } from "./components/BriefingPanel";
 import { CandidateList } from "./components/CandidateList";
 import { CostMeter } from "./components/CostMeter";
+import { DataSourceBadge } from "./components/DataSourceBadge";
 import { PredictionCard } from "./components/PredictionCard";
 import { AgentAlertBanner } from "./components/AgentAlertBanner";
 import { AgentStatusIndicator } from "./components/AgentStatusIndicator";
@@ -244,6 +245,7 @@ export default function App() {
             agentStatus={agentStatus}
             connectionStatus={connectionStatus}
           />
+          <DataSourceBadge />
           <CostMeter />
         </div>
       </header>

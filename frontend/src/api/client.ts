@@ -9,6 +9,7 @@ import type {
   BriefingRequest,
   Candidate,
   CostSummary,
+  DataSourceReport,
   Prediction,
   RankedCandidate,
   YR4Milestone,
@@ -38,6 +39,7 @@ export const api = {
     getJson<Prediction>(`/api/rank/${encodeURIComponent(trksub)}`),
   cost: () => getJson<CostSummary>("/api/cost/"),
   agentStatus: () => getJson<AgentStatus>("/api/agent/status"),
+  dataSource: () => getJson<DataSourceReport>("/api/meta/data-source"),
   yr4Timeline: () => getJson<YR4Milestone[]>("/api/replay/yr4"),
   yr4Milestone: (hour: number) =>
     getJson<YR4Milestone>(`/api/replay/yr4/${hour}`),

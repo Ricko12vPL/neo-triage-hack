@@ -20,7 +20,7 @@ load_dotenv()
 from backend import __version__  # noqa: E402
 from backend.agent.loop import agent_loop, stop_event  # noqa: E402
 from backend.agent.state import load_state  # noqa: E402
-from backend.routers import briefing, candidates, cost, rank, replay  # noqa: E402
+from backend.routers import briefing, candidates, cost, meta, rank, replay  # noqa: E402
 from backend.routers import ws as ws_router  # noqa: E402
 from backend.services.ranker import get_ranker  # noqa: E402
 
@@ -94,6 +94,7 @@ app.add_middleware(
 app.include_router(candidates.router)
 app.include_router(briefing.router)
 app.include_router(cost.router)
+app.include_router(meta.router)
 app.include_router(rank.router)
 app.include_router(replay.router)
 app.include_router(ws_router.router)
