@@ -20,6 +20,8 @@ interface Props {
   onCandidateClick: (trksub: string) => void;
   onFamousNEOClick?: (designation: string) => void;
   selectedFamousNEODesignation?: string | null;
+  /** Fired when the user clicks empty sky — used to dismiss the active orbit. */
+  onDeselect?: () => void;
 }
 
 const SPHERE_RADIUS = 4;
@@ -559,16 +561,21 @@ function FamousNEOField({
   selectedDesignation?: string | null;
 }) {
   const computed = useComputedFamousNEOs();
+  // F-2: progressive reveal. Ground track renders only for the selected
+  // object. Key includes designation so React remounts (and therefore
+  // replays the mount fade-in) whenever the selection changes.
+  const selected = computed.find(
+    (c) => c.neo.designation === selectedDesignation,
+  );
   return (
     <>
-      {computed.map((c) => (
+      {selected && (
         <OrbitGroundTrack
-          key={`track-${c.neo.designation}`}
-          neo={c.neo}
-          track={c.track}
-          selected={c.neo.designation === selectedDesignation}
+          key={`track-${selected.neo.designation}`}
+          neo={selected.neo}
+          track={selected.track}
         />
-      ))}
+      )}
       {computed.map((c) => (
         <FamousNEOMarker
           key={`${c.neo.designation}-${c.neo.name}`}
@@ -604,14 +611,15 @@ function orbitClassColor(orbit_class: FamousNEO["orbit_class"]): string {
   }
 }
 
+const ORBIT_FADE_TARGET_OPACITY = 0.88;
+const ORBIT_FADE_DURATION_SECONDS = 0.3;
+
 function OrbitGroundTrack({
   neo,
   track,
-  selected,
 }: {
   neo: FamousNEO;
   track: Array<{ ra_deg: number; dec_deg: number }>;
-  selected: boolean;
 }) {
   const geom = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -634,12 +642,27 @@ function OrbitGroundTrack({
       new THREE.LineBasicMaterial({
         color: orbitClassColor(neo.orbit_class),
         transparent: true,
-        opacity: selected ? 0.85 : 0.22,
+        opacity: 0,
       }),
-    [neo.orbit_class, selected],
+    [neo.orbit_class],
   );
 
   const line = useMemo(() => new THREE.Line(geom, material), [geom, material]);
+
+  // Fade-in on mount: ease-out opacity 0 → ORBIT_FADE_TARGET_OPACITY over
+  // ORBIT_FADE_DURATION_SECONDS. Remount (keyed by designation) replays
+  // this whenever the user clicks a different object.
+  const fadeT = useRef(0);
+  useFrame((_, delta) => {
+    if (fadeT.current >= 1) return;
+    fadeT.current = Math.min(
+      1,
+      fadeT.current + delta / ORBIT_FADE_DURATION_SECONDS,
+    );
+    // ease-out cubic
+    const eased = 1 - Math.pow(1 - fadeT.current, 3);
+    material.opacity = ORBIT_FADE_TARGET_OPACITY * eased;
+  });
 
   useEffect(() => {
     return () => {
@@ -774,12 +797,14 @@ export function SkyViewPanel({
   onCandidateClick,
   onFamousNEOClick,
   selectedFamousNEODesignation,
+  onDeselect,
 }: Props) {
   return (
     <Canvas
       camera={{ position: [0, 1.4, 6.5], fov: 50 }}
       style={{ background: "#02040a" }}
       dpr={[1, 2]}
+      onPointerMissed={() => onDeselect?.()}
     >
       <ambientLight intensity={0.18} />
       <Sun />

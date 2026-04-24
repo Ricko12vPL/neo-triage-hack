@@ -121,7 +121,7 @@ export function SkyViewContainer({
               </div>
             </div>
             <div className="pointer-events-none absolute bottom-3 left-4 z-10 text-[9px] font-mono uppercase tracking-wider text-zinc-600">
-              Celestial sphere · drag to rotate · scroll to zoom · click a point to inspect
+              Drag to rotate · scroll to zoom · <span className="text-zinc-400">click any object to reveal its orbit</span>
             </div>
             <div className="pointer-events-none absolute bottom-3 right-4 z-10 text-[9px] font-mono uppercase tracking-wider text-zinc-600">
               <span className="text-violet-500/80">— —</span> ecliptic ·{" "}
@@ -133,6 +133,10 @@ export function SkyViewContainer({
               onCandidateClick={handleCandidateClick}
               onFamousNEOClick={handleFamousNEOClick}
               selectedFamousNEODesignation={inspectedFamousDesignation}
+              onDeselect={() => {
+                setInspectedTrksub(null);
+                setInspectedFamousDesignation(null);
+              }}
             />
           </>
         ) : (
