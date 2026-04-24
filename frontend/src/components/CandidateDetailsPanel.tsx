@@ -5,6 +5,7 @@ import {
 } from "../lib/energetics";
 import { computeTorinoFromCandidate } from "../lib/torino";
 import { TorinoBadge } from "./TorinoBadge";
+import { computeMotionEnvelope, hashTrksub } from "../lib/proper_motion";
 
 interface Props {
   candidate: RankedCandidate;
@@ -271,6 +272,47 @@ export function CandidateDetailsPanel({
             value={`${candidate.arc_length_minutes.toFixed(0)} min`}
           />
         </Section>
+
+        {(() => {
+          const env = computeMotionEnvelope({
+            ra_deg: candidate.ra_deg,
+            dec_deg: candidate.dec_deg,
+            rate_arcsec_min: candidate.rate_arcsec_min,
+            arc_length_minutes: candidate.arc_length_minutes,
+            trksub_hash: hashTrksub(candidate.trksub),
+          });
+          const last = env.arc[env.arc.length - 1];
+          const totalDeg = (candidate.rate_arcsec_min * 60 * 24) / 3600;
+          const shortArc = candidate.arc_length_minutes < 60;
+          return (
+            <Section title="Preliminary motion vector (+24 h)">
+              <Row
+                label="Angular distance"
+                value={`${totalDeg.toFixed(2)}°`}
+              />
+              <Row
+                label="Direction (PA E of N)"
+                value={`${env.used_position_angle_deg.toFixed(0)}° (approx)`}
+              />
+              <Row
+                label="Direction uncertainty"
+                value={`±${env.uncertainty_half_angle_deg.toFixed(0)}°`}
+              />
+              <Row
+                label="Projected in 24 h"
+                value={`RA ${last.ra_deg.toFixed(2)}°, Dec ${last.dec_deg.toFixed(2)}°`}
+              />
+              <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+                {shortArc
+                  ? "Short-arc tracklet — direction is a best guess until a second-night recovery. Cone on Sky View shows where the object could be in 24 h."
+                  : "Great-circle extrapolation assumes constant rate. Real motion curves once an orbit is fit; use this only as a re-acquisition pointer."}{" "}
+                <span className="text-zinc-400">
+                  Not a substitute for JPL Scout/Sentry orbit determination.
+                </span>
+              </p>
+            </Section>
+          );
+        })()}
 
         <Section title="Orbit (status)">
           {candidate.impact_probability != null ? (

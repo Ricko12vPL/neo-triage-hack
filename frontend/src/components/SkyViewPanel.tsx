@@ -7,6 +7,11 @@ import { radec_to_xyz } from "../lib/celestial";
 import { computeTorinoFromCandidate } from "../lib/torino";
 import { FAMOUS_NEOS, type FamousNEO } from "../lib/famous_neos";
 import {
+  computeMotionEnvelope,
+  computeUncertaintyCone,
+  hashTrksub,
+} from "../lib/proper_motion";
+import {
   currentJD,
   earthHeliocentricAtJD,
   heliocentricPositionAtJD,
@@ -189,71 +194,155 @@ interface MarkerProps {
   onClick: () => void;
 }
 
-function motionTrack(
-  candidate: RankedCandidate,
-  position: THREE.Vector3,
-): THREE.Vector3[] {
-  const ra_rad = (candidate.ra_deg * Math.PI) / 180;
-  const dec_rad = (candidate.dec_deg * Math.PI) / 180;
-  const tangent = new THREE.Vector3(
-    -Math.sin(ra_rad) * Math.cos(dec_rad),
-    Math.sin(dec_rad) * 0.15,
-    -Math.cos(ra_rad) * Math.cos(dec_rad),
-  ).normalize();
-
-  const rate = candidate.rate_arcsec_min ?? 0.5;
-  const halfLen = Math.min(0.55, 0.15 + rate * 0.08);
-
-  const p0 = position.clone().sub(tangent.clone().multiplyScalar(halfLen));
-  const p1 = position.clone().add(tangent.clone().multiplyScalar(halfLen));
-  p0.setLength(position.length());
-  p1.setLength(position.length());
-  return [p0, p1];
-}
-
-function MotionTrack({ candidate, selected, position }: {
+/**
+ * F-1 primary-candidate 24 h motion arc.
+ *
+ * Renders:
+ *   - A great-circle centerline sampled hourly from the tracklet position
+ *     along its proper-motion direction.
+ *   - Tick marks (small radial stubs) at +6 h / +12 h / +18 h / +24 h.
+ *   - A translucent uncertainty wedge whose half-angle shrinks with
+ *     longer observed arcs.
+ *
+ * Honest framing: arc direction comes from hashTrksub(trksub) when the
+ * upstream feed doesn't supply a position angle. The wedge encodes that
+ * direction uncertainty visually — a fresh <15 min tracklet will show a
+ * wide fan; a 3-hour arc shows a narrow ribbon. Caller UI states this
+ * explicitly in CandidateDetailsPanel.
+ */
+function PrimaryMotionArc({
+  candidate,
+  color,
+}: {
   candidate: RankedCandidate;
-  selected: boolean;
-  position: THREE.Vector3;
+  color: number;
 }) {
-  const points = useMemo(
-    () => motionTrack(candidate, position),
-    [candidate, position],
+  const envelope = useMemo(
+    () =>
+      computeMotionEnvelope({
+        ra_deg: candidate.ra_deg,
+        dec_deg: candidate.dec_deg,
+        rate_arcsec_min: candidate.rate_arcsec_min ?? 0.5,
+        arc_length_minutes: candidate.arc_length_minutes ?? 5,
+        trksub_hash: hashTrksub(candidate.trksub),
+      }),
+    [candidate],
   );
-  const geom = useMemo(() => {
+
+  const coneSamples = useMemo(
+    () => computeUncertaintyCone(
+      {
+        ra_deg: candidate.ra_deg,
+        dec_deg: candidate.dec_deg,
+        rate_arcsec_min: candidate.rate_arcsec_min ?? 0.5,
+        arc_length_minutes: candidate.arc_length_minutes ?? 5,
+      },
+      envelope,
+      18,
+    ),
+    [candidate, envelope],
+  );
+
+  // Place all geometry slightly outside the sphere so we never z-fight
+  // with the Earth or grid.
+  const R = SPHERE_RADIUS * 1.015;
+
+  const centerlineGeom = useMemo(() => {
     const g = new THREE.BufferGeometry();
-    g.setFromPoints(points);
-    return g;
-  }, [points]);
-
-  const material = useMemo(() => {
-    const torino = computeTorinoFromCandidate(
-      candidate.impact_probability,
-      candidate.absolute_magnitude_h,
-    );
-    let color = 0x3b82f6;
-    if (torino.scale >= 3) color = 0xef4444;
-    else if (torino.scale >= 2) color = 0xf59e0b;
-    else if (torino.scale >= 1) color = 0xeab308;
-    return new THREE.LineBasicMaterial({
-      color,
-      transparent: true,
-      opacity: selected ? 0.95 : 0.22,
-      linewidth: selected ? 2 : 1,
+    const pos = new Float32Array(envelope.arc.length * 3);
+    envelope.arc.forEach((s, i) => {
+      const p = radec_to_xyz(s.ra_deg, s.dec_deg, R);
+      pos[i * 3] = p.x;
+      pos[i * 3 + 1] = p.y;
+      pos[i * 3 + 2] = p.z;
     });
-  }, [candidate, selected]);
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    return g;
+  }, [envelope, R]);
 
-  const line = useMemo(() => new THREE.Line(geom, material), [geom, material]);
-  // B-4 (memory leak from forensic report): ensure disposable geometry/material
-  // are released when this component unmounts.
+  const coneGeom = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const pos = new Float32Array(coneSamples.length * 3);
+    coneSamples.forEach((s, i) => {
+      const p = radec_to_xyz(s.ra_deg, s.dec_deg, R * 0.998);
+      pos[i * 3] = p.x;
+      pos[i * 3 + 1] = p.y;
+      pos[i * 3 + 2] = p.z;
+    });
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    return g;
+  }, [coneSamples, R]);
+
+  const centerMat = useMemo(
+    () =>
+      new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0,
+      }),
+    [color],
+  );
+  const coneMat = useMemo(
+    () =>
+      new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0,
+      }),
+    [color],
+  );
+
+  const centerLine = useMemo(
+    () => new THREE.Line(centerlineGeom, centerMat),
+    [centerlineGeom, centerMat],
+  );
+  const coneLine = useMemo(
+    () => new THREE.LineLoop(coneGeom, coneMat),
+    [coneGeom, coneMat],
+  );
+
+  // Fade-in on mount: 300 ms ease-out.
+  const fadeT = useRef(0);
+  useFrame((_, delta) => {
+    if (fadeT.current >= 1) return;
+    fadeT.current = Math.min(1, fadeT.current + delta / 0.3);
+    const eased = 1 - Math.pow(1 - fadeT.current, 3);
+    centerMat.opacity = 0.95 * eased;
+    coneMat.opacity = 0.25 * eased;
+  });
+
   useEffect(() => {
     return () => {
-      geom.dispose();
-      material.dispose();
+      centerlineGeom.dispose();
+      coneGeom.dispose();
+      centerMat.dispose();
+      coneMat.dispose();
     };
-  }, [geom, material]);
+  }, [centerlineGeom, coneGeom, centerMat, coneMat]);
 
-  return <primitive object={line} />;
+  // Tick mark points at +6, +12, +18, +24 h
+  const tickPoints = useMemo(() => {
+    const ticks = [6, 12, 18, 24];
+    return ticks
+      .map((t) => envelope.arc.find((s) => Math.abs(s.t_hours - t) < 0.01))
+      .filter(Boolean) as typeof envelope.arc;
+  }, [envelope]);
+
+  return (
+    <group>
+      <primitive object={coneLine} />
+      <primitive object={centerLine} />
+      {tickPoints.map((s) => {
+        const p = radec_to_xyz(s.ra_deg, s.dec_deg, R);
+        return (
+          <mesh key={`tick-${s.t_hours}`} position={[p.x, p.y, p.z]}>
+            <sphereGeometry args={[0.018, 12, 12]} />
+            <meshBasicMaterial color={color} transparent opacity={0.9} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
 }
 
 /**
@@ -322,11 +411,13 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
 
   return (
     <>
-      <MotionTrack
-        candidate={candidate}
-        selected={selected}
-        position={position}
-      />
+      {selected && (
+        <PrimaryMotionArc
+          key={`arc-${candidate.trksub}`}
+          candidate={candidate}
+          color={new THREE.Color(color).getHex()}
+        />
+      )}
       <group position={[position.x, position.y, position.z]}>
         <mesh
           ref={meshRef}
