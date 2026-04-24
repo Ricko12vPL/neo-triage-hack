@@ -6,11 +6,19 @@
 
 **What changed vs v3:** Sky View now polished (12k background density, clickable famous NEOs with real data panel, visible celestial grid labels). A new **Orbit View toggle** adds a heliocentric scene: Sun at origin, Mercury–Mars orbits, 18 famous asteroid and comet orbits as Keplerian ellipses computed from J2000 elements. The new `0:40–1:05` Orbit View beat is the jury hook — one toggle and the demo reads like NASA Eyes, but ours.
 
+**What changed vs v4-initial (2026-04-24 evening polish):**
+1. **Progressive orbit reveal.** Sky View is clean by default — ground tracks render *only* when the user clicks an object. Click Bennu → Bennu's track fades in; click Apophis → Apophis's track fades in, Bennu's fades out; click empty sky → everything clears. Solves the "Geographos looks like it orbits Earth" confusion.
+2. **Primary-candidate motion arcs.** Clicking a tracklet in the Live Feed reveals a 24-hour forward proper-motion arc plus a translucent uncertainty cone that widens with shorter observed arcs. The detail panel now carries honest framing: "Preliminary motion vector — not a substitute for JPL Scout/Sentry orbit determination."
+3. **Torino-scale glow hierarchy.** T0 slate, T1 blue, T2 yellow (0.5 Hz pulse), T3 orange (1 Hz pulse), T4–5 red (1.4 Hz pulse), T6+ dark-red (2 Hz pulse). P21YR4A at T3 now visibly pulses.
+4. **Context toggle.** `👁 Context ON / 🎯 Triage focus` pill top-right hides the famous-NEO layer + 12k background points, leaving only tonight's triage set + Earth + grid. State persists.
+5. **JPL-verified orbital elements.** All 18 famous NEOs re-fetched from NASA/JPL Horizons at J2000 and patched. The previous hand-propagated mean anomalies were off by up to 170°. Re-verification is one `python scripts/verify_jpl_orbital_elements.py` away.
+6. **Stable labels + markers across zoom.** Html drops distanceFactor; markers scale ∝ camDist/6.5 clamped to [0.55, 1.9] so the tonight's-triage set stays visible at any zoom level.
+
 ---
 
 ## [0:00–0:10] HOOK — The problem in one sentence
 
-**Visual:** Dashboard loaded with **Sky View tab active, Sky View mode**. Earth at center, ground-tracks visible as coloured arcs, NASA Eyes catalog below.
+**Visual:** Dashboard loaded with **Sky View tab active, Sky View mode**. Earth at center, no orbit tracks drawn (clean default), primary candidates pulsing by Torino colour, NASA Eyes catalog below. **Context toggle on** so the jury sees the full NEO population backdrop the first time.
 
 **Say:**
 > "In 2024, asteroid 2024 YR4 briefly crossed Torino Scale 3 — a 2.4 percent chance of Earth impact in 2032. Observers had eighteen hours to figure out if it was real. We built the tool that would have helped them."
