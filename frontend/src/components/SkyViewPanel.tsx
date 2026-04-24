@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { OrbitControls, Stars, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -11,6 +11,8 @@ interface Props {
   candidates: RankedCandidate[];
   selectedTrksub: string | null;
   onCandidateClick: (trksub: string) => void;
+  onFamousNEOClick?: (designation: string) => void;
+  selectedFamousNEODesignation?: string | null;
 }
 
 const SPHERE_RADIUS = 4;
@@ -20,8 +22,6 @@ function Earth() {
   const earthRef = useRef<THREE.Mesh>(null);
   const cloudsRef = useRef<THREE.Mesh>(null);
 
-  // Textures loaded via drei — public/textures copied from Three.js examples
-  // (BSD-licensed). Full color + specular + night lights + cloud layer.
   const [colorMap, specMap, lightsMap, cloudsMap] = useLoader(
     THREE.TextureLoader,
     [
@@ -39,7 +39,6 @@ function Earth() {
 
   return (
     <group>
-      {/* Earth body */}
       <mesh ref={earthRef}>
         <sphereGeometry args={[EARTH_RADIUS, 96, 96]} />
         <meshStandardMaterial
@@ -53,7 +52,6 @@ function Earth() {
         />
       </mesh>
 
-      {/* Clouds — transparent, offset rotation rate for parallax */}
       <mesh ref={cloudsRef}>
         <sphereGeometry args={[EARTH_RADIUS * 1.012, 96, 96]} />
         <meshStandardMaterial
@@ -64,7 +62,6 @@ function Earth() {
         />
       </mesh>
 
-      {/* Atmosphere inner glow */}
       <mesh>
         <sphereGeometry args={[EARTH_RADIUS * 1.05, 64, 64]} />
         <meshBasicMaterial
@@ -75,7 +72,6 @@ function Earth() {
           depthWrite={false}
         />
       </mesh>
-      {/* Atmosphere outer glow */}
       <mesh>
         <sphereGeometry args={[EARTH_RADIUS * 1.14, 64, 64]} />
         <meshBasicMaterial
@@ -91,7 +87,7 @@ function Earth() {
 }
 
 /**
- * Deterministic seeded PRNG (mulberry32) — keeps the background NEO field
+ * Deterministic seeded PRNG (mulberry32) — keeps the background field
  * stable across renders and keeps useMemo pure for the lint rule.
  */
 function mulberry32(seed: number) {
@@ -104,9 +100,16 @@ function mulberry32(seed: number) {
   };
 }
 
+/**
+ * H-2 fix: bumped from 3200 to 12000 and tightened the shell from
+ * radius=5..18 to radius=5..11 — previously most points were in the
+ * outer shell, far from camera, fading to invisible on 4K. Ecliptic
+ * flattening preserved (phi factor 0.55) because real NEOs cluster
+ * near the ecliptic.
+ */
 function buildBackgroundNEOGeometry(): THREE.BufferGeometry {
-  const rng = mulberry32(0xC70E); // stable seed — looks like "70E" in hex
-  const count = 3200;
+  const rng = mulberry32(0xC70E);
+  const count = 12000;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
 
@@ -114,10 +117,9 @@ function buildBackgroundNEOGeometry(): THREE.BufferGeometry {
     const u = rng();
     const v = rng();
     const theta = 2 * Math.PI * u;
-    // Flatten toward the ecliptic — NEOs cluster near it
     const phi_raw = Math.acos(2 * v - 1);
     const phi = Math.PI / 2 + (phi_raw - Math.PI / 2) * 0.55;
-    const radius = 5 + rng() * 13;
+    const radius = 5 + rng() * 6;
 
     positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
     positions[i * 3 + 1] = radius * Math.cos(phi);
@@ -140,21 +142,35 @@ function buildBackgroundNEOGeometry(): THREE.BufferGeometry {
   return geom;
 }
 
-// Module-level const — generated exactly once, at module load.
 const BACKGROUND_NEO_GEOMETRY = buildBackgroundNEOGeometry();
 
+/**
+ * Background NEO field. raycast is intentionally disabled — these are
+ * decorative catalog context, not interactive. The smaller size + lower
+ * opacity signals "not a click target" so users don't try to click them
+ * (reinforcement of U-3 intent).
+ *
+ * Wraps the <points> in a group that drifts very slowly — gives the sky
+ * a "slightly alive" feel without being distracting (U-4 polish).
+ */
 function BackgroundNEOField() {
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame((_, delta) => {
+    if (groupRef.current) groupRef.current.rotation.y += delta * 0.0045;
+  });
   return (
-    <points geometry={BACKGROUND_NEO_GEOMETRY} raycast={() => null}>
-      <pointsMaterial
-        vertexColors
-        size={0.05}
-        sizeAttenuation
-        transparent
-        opacity={0.65}
-        depthWrite={false}
-      />
-    </points>
+    <group ref={groupRef}>
+      <points geometry={BACKGROUND_NEO_GEOMETRY} raycast={() => null}>
+        <pointsMaterial
+          vertexColors
+          size={0.028}
+          sizeAttenuation
+          transparent
+          opacity={0.45}
+          depthWrite={false}
+        />
+      </points>
+    </group>
   );
 }
 
@@ -164,20 +180,10 @@ interface MarkerProps {
   onClick: () => void;
 }
 
-/**
- * Generate a short tangent vector at the candidate's sky position,
- * representing projected sky-plane motion over the next few hours. We don't
- * have a position angle in the tracklet, so we synthesize a deterministic
- * tangent (perpendicular to the position vector in the local ecliptic frame).
- * Length scales with rate_arcsec_min — faster objects get longer tracks.
- */
 function motionTrack(
   candidate: RankedCandidate,
   position: THREE.Vector3,
 ): THREE.Vector3[] {
-  // Tangent direction: derivative of position on sphere along RA is
-  // roughly (-sin(ra), 0, -cos(ra)) * cos(dec). We'll nudge it by dec
-  // so the arc has a small latitude component too — makes it feel real.
   const ra_rad = (candidate.ra_deg * Math.PI) / 180;
   const dec_rad = (candidate.dec_deg * Math.PI) / 180;
   const tangent = new THREE.Vector3(
@@ -186,13 +192,11 @@ function motionTrack(
     -Math.cos(ra_rad) * Math.cos(dec_rad),
   ).normalize();
 
-  // Length proportional to rate, capped
   const rate = candidate.rate_arcsec_min ?? 0.5;
   const halfLen = Math.min(0.55, 0.15 + rate * 0.08);
 
   const p0 = position.clone().sub(tangent.clone().multiplyScalar(halfLen));
   const p1 = position.clone().add(tangent.clone().multiplyScalar(halfLen));
-  // Keep on-sphere: re-project to sphere surface
   p0.setLength(position.length());
   p1.setLength(position.length());
   return [p0, p1];
@@ -230,12 +234,39 @@ function MotionTrack({ candidate, selected, position }: {
     });
   }, [candidate, selected]);
 
-  return <primitive object={new THREE.Line(geom, material)} />;
+  const line = useMemo(() => new THREE.Line(geom, material), [geom, material]);
+  // B-4 (memory leak from forensic report): ensure disposable geometry/material
+  // are released when this component unmounts.
+  useEffect(() => {
+    return () => {
+      geom.dispose();
+      material.dispose();
+    };
+  }, [geom, material]);
+
+  return <primitive object={line} />;
+}
+
+/**
+ * U-1 perception fix: when a new candidate arrives via the WebSocket
+ * agent feed, the marker used to just pop in at full scale — no signal
+ * to the user that anything changed. Now: scale animates 0→1 over 900ms
+ * with ease-out, and the emissive pulses for an additional 2.5s so the
+ * viewer's eye catches the new object even on the back of a slowly
+ * rotating sphere.
+ */
+function useEnterAnimation() {
+  const mountTime = useRef(0);
+  useEffect(() => {
+    mountTime.current = performance.now();
+  }, []);
+  return mountTime;
 }
 
 function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
+  const mountTime = useEnterAnimation();
 
   const position = useMemo(() => {
     const p = radec_to_xyz(candidate.ra_deg, candidate.dec_deg, SPHERE_RADIUS);
@@ -258,14 +289,23 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
+
+    // Enter animation: first 900ms, scale grows from 0 → 1 with ease-out.
+    const elapsed = performance.now() - mountTime.current;
+    const enterProgress = Math.min(1, elapsed / 900);
+    const enterScale = 1 - Math.pow(1 - enterProgress, 3); // ease-out cubic
+    const pulseBoost = elapsed < 3500 && !isHero
+      ? 1 + Math.sin(elapsed * 0.008) * 0.35 * (1 - elapsed / 3500)
+      : 1;
+
     if (isHero) {
       const pulse = 1 + Math.sin(clock.elapsedTime * 2.5) * 0.22;
-      meshRef.current.scale.set(pulse, pulse, pulse);
+      meshRef.current.scale.setScalar(pulse * enterScale);
     } else if (selected) {
       const pulse = 1 + Math.sin(clock.elapsedTime * 3) * 0.14;
-      meshRef.current.scale.set(pulse, pulse, pulse);
+      meshRef.current.scale.setScalar(pulse * enterScale);
     } else {
-      meshRef.current.scale.set(1, 1, 1);
+      meshRef.current.scale.setScalar(enterScale * pulseBoost);
     }
   });
 
@@ -347,6 +387,12 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
   );
 }
 
+/**
+ * H-4 fix: ecliptic and celestial equator were barely visible over the
+ * near-black scene background. Bumped opacity 0.30→0.55 / 0.35→0.50,
+ * colours brightened, and added inline labels so viewers can read the
+ * geometry instead of just seeing "a random line".
+ */
 function CelestialGrid() {
   const points_equator: [number, number, number][] = [];
   const points_ecliptic: [number, number, number][] = [];
@@ -362,39 +408,95 @@ function CelestialGrid() {
     points_ecliptic.push([x, y_ecl, z_ecl]);
   }
 
-  const equatorGeom = new THREE.BufferGeometry().setFromPoints(
-    points_equator.map((p) => new THREE.Vector3(...p)),
+  const equatorGeom = useMemo(
+    () =>
+      new THREE.BufferGeometry().setFromPoints(
+        points_equator.map((p) => new THREE.Vector3(...p)),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
-  const eclipticGeom = new THREE.BufferGeometry().setFromPoints(
-    points_ecliptic.map((p) => new THREE.Vector3(...p)),
+  const eclipticGeom = useMemo(
+    () =>
+      new THREE.BufferGeometry().setFromPoints(
+        points_ecliptic.map((p) => new THREE.Vector3(...p)),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const equatorLine = useMemo(
+    () =>
+      new THREE.Line(
+        equatorGeom,
+        new THREE.LineBasicMaterial({
+          color: 0x64748b,
+          transparent: true,
+          opacity: 0.5,
+        }),
+      ),
+    [equatorGeom],
+  );
+  const eclipticLine = useMemo(
+    () =>
+      new THREE.Line(
+        eclipticGeom,
+        new THREE.LineBasicMaterial({
+          color: 0x8b5cf6,
+          transparent: true,
+          opacity: 0.55,
+        }),
+      ),
+    [eclipticGeom],
   );
 
   return (
     <>
-      <primitive
-        object={
-          new THREE.Line(
-            equatorGeom,
-            new THREE.LineBasicMaterial({
-              color: 0x334155,
-              transparent: true,
-              opacity: 0.35,
-            }),
-          )
-        }
-      />
-      <primitive
-        object={
-          new THREE.Line(
-            eclipticGeom,
-            new THREE.LineBasicMaterial({
-              color: 0x7c3aed,
-              transparent: true,
-              opacity: 0.3,
-            }),
-          )
-        }
-      />
+      <primitive object={equatorLine} />
+      <primitive object={eclipticLine} />
+      {/* Labels at extreme edges */}
+      <Html
+        position={[SPHERE_RADIUS, 0, 0]}
+        center
+        style={{ pointerEvents: "none", userSelect: "none" }}
+      >
+        <div
+          style={{
+            fontFamily: "ui-monospace, monospace",
+            fontSize: 9,
+            color: "#94a3b8",
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            opacity: 0.85,
+            whiteSpace: "nowrap",
+          }}
+        >
+          celestial equator
+        </div>
+      </Html>
+      <Html
+        position={[
+          SPHERE_RADIUS * Math.cos(Math.PI / 2),
+          SPHERE_RADIUS * Math.sin(Math.PI / 2) * Math.sin(tilt),
+          -SPHERE_RADIUS * Math.sin(Math.PI / 2) * Math.cos(tilt),
+        ]}
+        center
+        style={{ pointerEvents: "none", userSelect: "none" }}
+      >
+        <div
+          style={{
+            fontFamily: "ui-monospace, monospace",
+            fontSize: 9,
+            color: "#a78bfa",
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            opacity: 0.85,
+            whiteSpace: "nowrap",
+          }}
+        >
+          ecliptic
+        </div>
+      </Html>
     </>
   );
 }
@@ -410,47 +512,110 @@ function Sun() {
   );
 }
 
-/**
- * Backdrop of famous NEOs / small bodies — Bennu, Apophis, Didymos, Ryugu,
- * Itokawa, Eros, and friends. Non-interactive, rendered as white markers
- * with a short designation so the viewer recognises the field as "the
- * asteroid catalog you've heard of" without us claiming live ephemerides.
- */
-function FamousNEOField() {
+function FamousNEOField({
+  onFamousNEOClick,
+  selectedDesignation,
+}: {
+  onFamousNEOClick?: (designation: string) => void;
+  selectedDesignation?: string | null;
+}) {
   return (
     <>
       {FAMOUS_NEOS.map((neo) => (
-        <FamousNEOMarker key={`${neo.designation}-${neo.name}`} neo={neo} />
+        <FamousNEOMarker
+          key={`${neo.designation}-${neo.name}`}
+          neo={neo}
+          selected={neo.designation === selectedDesignation}
+          onClick={
+            onFamousNEOClick
+              ? () => onFamousNEOClick(neo.designation)
+              : undefined
+          }
+        />
       ))}
     </>
   );
 }
 
-function FamousNEOMarker({ neo }: { neo: FamousNEO }) {
+/**
+ * U-3 / U-4 / B-2 fix. Previously: raycast={() => null} disabled
+ * interaction AND silently made the onPointerOver handlers dead code
+ * (B-2). Now: raycast is enabled (default), onClick opens the
+ * FamousNEODetailsPanel, hover works. Marker radius 0.022→0.040 with
+ * subtle glow for visual hierarchy, so these feel like known objects
+ * rather than background pixels. Non-NEO main-belt bodies get a
+ * dimmer treatment so they don't compete with Apollos/Atens.
+ */
+function FamousNEOMarker({
+  neo,
+  selected,
+  onClick,
+}: {
+  neo: FamousNEO;
+  selected: boolean;
+  onClick?: () => void;
+}) {
   const [hovered, setHovered] = useState(false);
   const pos = useMemo(
     () => radec_to_xyz(neo.ra_deg, neo.dec_deg, SPHERE_RADIUS * 1.02),
     [neo.ra_deg, neo.dec_deg],
   );
-  const orbitColor =
+  const baseColor =
     neo.orbit_class === "Apollo" || neo.orbit_class === "Aten"
       ? "#cbd5e1"
-      : neo.orbit_class === "Comet"
-        ? "#a78bfa"
-        : "#94a3b8";
+      : neo.orbit_class === "Amor"
+        ? "#a5b4fc"
+        : neo.orbit_class === "Comet"
+          ? "#a78bfa"
+          : "#64748b"; // MBA — dimmer
+
+  const sizeBase = neo.is_neo ? 0.04 : 0.028;
+  const size = selected || hovered ? sizeBase * 1.6 : sizeBase;
+  const glowIntensity = selected ? 1.4 : hovered ? 0.9 : 0.35;
+
   return (
     <group position={[pos.x, pos.y, pos.z]}>
       <mesh
         onPointerOver={(e) => {
+          if (!onClick) return;
           e.stopPropagation();
           setHovered(true);
+          document.body.style.cursor = "pointer";
         }}
-        onPointerOut={() => setHovered(false)}
-        raycast={() => null}
+        onPointerOut={() => {
+          if (!onClick) return;
+          setHovered(false);
+          document.body.style.cursor = "auto";
+        }}
+        onClick={
+          onClick
+            ? (e) => {
+                e.stopPropagation();
+                onClick();
+              }
+            : undefined
+        }
       >
-        <sphereGeometry args={[0.022, 12, 12]} />
-        <meshBasicMaterial color={orbitColor} transparent opacity={0.65} />
+        <sphereGeometry args={[size, 16, 16]} />
+        <meshStandardMaterial
+          color={baseColor}
+          emissive={baseColor}
+          emissiveIntensity={glowIntensity}
+          transparent
+          opacity={neo.is_neo ? 0.95 : 0.7}
+        />
       </mesh>
+      {(selected || hovered) && (
+        <mesh>
+          <sphereGeometry args={[size * 2.1, 16, 16]} />
+          <meshBasicMaterial
+            color={baseColor}
+            transparent
+            opacity={selected ? 0.3 : 0.18}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
       <Html
         center
         style={{ pointerEvents: "none", userSelect: "none" }}
@@ -458,15 +623,27 @@ function FamousNEOMarker({ neo }: { neo: FamousNEO }) {
         <div
           style={{
             fontFamily: "ui-monospace, monospace",
-            fontSize: 9,
-            color: hovered ? "#f1f5f9" : "#94a3b8",
+            fontSize: 10,
+            color: hovered || selected ? "#f1f5f9" : "#cbd5e1",
             whiteSpace: "nowrap",
-            transform: "translate(10px, -50%)",
-            opacity: 0.75,
-            letterSpacing: 0.2,
+            transform: "translate(12px, -50%)",
+            opacity: selected || hovered ? 1 : 0.82,
+            letterSpacing: 0.3,
+            textShadow: "0 0 6px rgba(0,0,0,0.85)",
           }}
         >
           {neo.name}
+          {!neo.is_neo && (
+            <span
+              style={{
+                marginLeft: 4,
+                fontSize: 8,
+                color: "#64748b",
+              }}
+            >
+              · MBA
+            </span>
+          )}
         </div>
       </Html>
     </group>
@@ -477,6 +654,8 @@ export function SkyViewPanel({
   candidates,
   selectedTrksub,
   onCandidateClick,
+  onFamousNEOClick,
+  selectedFamousNEODesignation,
 }: Props) {
   return (
     <Canvas
@@ -501,7 +680,10 @@ export function SkyViewPanel({
         <BackgroundNEOField />
         <Earth />
         <CelestialGrid />
-        <FamousNEOField />
+        <FamousNEOField
+          onFamousNEOClick={onFamousNEOClick}
+          selectedDesignation={selectedFamousNEODesignation}
+        />
         {candidates.map((c) => (
           <CandidateMarker
             key={c.trksub}

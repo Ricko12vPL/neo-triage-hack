@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { RankedCandidate } from "../api/types";
 import { SkyViewPanel } from "./SkyViewPanel";
 import { CandidateDetailsPanel } from "./CandidateDetailsPanel";
+import { FamousNEODetailsPanel } from "./FamousNEODetailsPanel";
+import { FAMOUS_NEOS } from "../lib/famous_neos";
 
 interface Props {
   candidates: RankedCandidate[];
@@ -23,8 +25,32 @@ export function SkyViewContainer({
   const [inspectedTrksub, setInspectedTrksub] = useState<string | null>(
     selectedTrksub,
   );
+  // Separate selection axis for famous NEOs (real known bodies — different
+  // data shape, different panel). Mutually exclusive with candidate inspection.
+  const [inspectedFamousDesignation, setInspectedFamousDesignation] = useState<
+    string | null
+  >(null);
 
   const inspected = candidates.find((c) => c.trksub === inspectedTrksub) ?? null;
+  const inspectedFamous = useMemo(
+    () =>
+      inspectedFamousDesignation
+        ? FAMOUS_NEOS.find(
+            (n) => n.designation === inspectedFamousDesignation,
+          ) ?? null
+        : null,
+    [inspectedFamousDesignation],
+  );
+
+  const handleFamousNEOClick = (designation: string) => {
+    setInspectedTrksub(null);
+    setInspectedFamousDesignation(designation);
+  };
+
+  const handleCandidateClick = (trksub: string) => {
+    setInspectedFamousDesignation(null);
+    setInspectedTrksub(trksub);
+  };
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -57,7 +83,9 @@ export function SkyViewContainer({
         <SkyViewPanel
           candidates={candidates}
           selectedTrksub={inspectedTrksub}
-          onCandidateClick={(trksub) => setInspectedTrksub(trksub)}
+          onCandidateClick={handleCandidateClick}
+          onFamousNEOClick={handleFamousNEOClick}
+          selectedFamousNEODesignation={inspectedFamousDesignation}
         />
 
         {inspected && (
@@ -67,6 +95,12 @@ export function SkyViewContainer({
             onOpenFullBriefing={() => {
               onOpenFullBriefing(inspected.trksub);
             }}
+          />
+        )}
+        {inspectedFamous && !inspected && (
+          <FamousNEODetailsPanel
+            neo={inspectedFamous}
+            onClose={() => setInspectedFamousDesignation(null)}
           />
         )}
       </div>
