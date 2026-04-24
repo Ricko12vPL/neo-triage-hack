@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { RankedCandidate } from "../api/types";
 import { SkyViewPanel } from "./SkyViewPanel";
 import { CandidateDetailsPanel } from "./CandidateDetailsPanel";
@@ -38,6 +38,21 @@ export function SkyViewContainer({
   const [inspectedFamousDesignation, setInspectedFamousDesignation] = useState<
     string | null
   >(null);
+
+  // F-7: context toggle — hide the famous-NEO layer and the 12k-point
+  // background field so only Earth + grid + primary candidates remain.
+  // Persisted so the user's preference survives tab switches.
+  const [showContext, setShowContext] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const stored = window.localStorage.getItem("neo-triage-sky-show-context");
+    return stored === null ? true : stored === "1";
+  });
+  useEffect(() => {
+    window.localStorage.setItem(
+      "neo-triage-sky-show-context",
+      showContext ? "1" : "0",
+    );
+  }, [showContext]);
 
   const inspected = candidates.find((c) => c.trksub === inspectedTrksub) ?? null;
   const inspectedFamous = useMemo(
@@ -104,6 +119,28 @@ export function SkyViewContainer({
           </div>
         </div>
 
+        {/* Context (famous NEOs + background) toggle — Sky view only */}
+        {viewMode === "sky" && (
+          <div className="absolute right-4 top-[52px] z-10">
+            <button
+              onClick={() => setShowContext((v) => !v)}
+              className={`rounded-full border px-3 py-1 text-[10px] font-mono uppercase tracking-widest transition-colors ${
+                showContext
+                  ? "border-zinc-600 bg-zinc-900/80 text-zinc-200 hover:bg-zinc-800"
+                  : "border-emerald-700 bg-emerald-950/70 text-emerald-200 hover:bg-emerald-900/70"
+              }`}
+              title={
+                showContext
+                  ? "Hide famous NEOs + background catalog"
+                  : "Show famous NEOs + background catalog"
+              }
+              aria-pressed={!showContext}
+            >
+              {showContext ? "👁 Context ON" : "🎯 Triage focus"}
+            </button>
+          </div>
+        )}
+
         {viewMode === "sky" ? (
           <>
             <div className="pointer-events-none absolute right-4 top-3 z-10 flex flex-col items-end gap-1 text-[9px] font-mono uppercase tracking-wider text-zinc-500">
@@ -133,6 +170,7 @@ export function SkyViewContainer({
               onCandidateClick={handleCandidateClick}
               onFamousNEOClick={handleFamousNEOClick}
               selectedFamousNEODesignation={inspectedFamousDesignation}
+              showContext={showContext}
               onDeselect={() => {
                 setInspectedTrksub(null);
                 setInspectedFamousDesignation(null);

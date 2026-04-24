@@ -27,6 +27,12 @@ interface Props {
   selectedFamousNEODesignation?: string | null;
   /** Fired when the user clicks empty sky — used to dismiss the active orbit. */
   onDeselect?: () => void;
+  /**
+   * F-7: when false, the famous-NEO layer and background 12k-point field
+   * are not rendered so the view reduces to Earth + grid + primary
+   * candidates — useful for "this is what we care about tonight" framing.
+   */
+  showContext?: boolean;
 }
 
 const SPHERE_RADIUS = 4;
@@ -972,6 +978,7 @@ export function SkyViewPanel({
   onFamousNEOClick,
   selectedFamousNEODesignation,
   onDeselect,
+  showContext = true,
 }: Props) {
   // F-4: defensive filter so a candidate with missing/NaN coords can't
   // silently disappear from Sky View while still counting in Live Feed.
@@ -1026,13 +1033,15 @@ export function SkyViewPanel({
           fade
           speed={0.4}
         />
-        <BackgroundNEOField />
+        {showContext && <BackgroundNEOField />}
         <Earth />
         <CelestialGrid />
-        <FamousNEOField
-          onFamousNEOClick={onFamousNEOClick}
-          selectedDesignation={selectedFamousNEODesignation}
-        />
+        {showContext && (
+          <FamousNEOField
+            onFamousNEOClick={onFamousNEOClick}
+            selectedDesignation={selectedFamousNEODesignation}
+          />
+        )}
         {renderableCandidates.map((c) => (
           <CandidateMarker
             key={c.trksub}
