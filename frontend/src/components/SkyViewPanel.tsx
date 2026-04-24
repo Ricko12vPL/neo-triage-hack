@@ -6,6 +6,13 @@ import type { RankedCandidate } from "../api/types";
 import { radec_to_xyz } from "../lib/celestial";
 import { computeTorinoFromCandidate } from "../lib/torino";
 import { FAMOUS_NEOS, type FamousNEO } from "../lib/famous_neos";
+import {
+  currentJD,
+  earthHeliocentricAtJD,
+  heliocentricPositionAtJD,
+  heliocentricToGeocentricCelestialSphere,
+  orbitGroundTrack,
+} from "../lib/kepler";
 
 interface Props {
   candidates: RankedCandidate[];
@@ -512,6 +519,38 @@ function Sun() {
   );
 }
 
+/**
+ * Option C: compute each famous NEO's CURRENT apparent sky position
+ * from its Keplerian elements (via kepler.ts) + sample its 1-year
+ * ground track for rendering as a curve on the celestial sphere.
+ *
+ * Expensive-ish (18 × 64 Kepler solves) but done exactly once per
+ * mount — the JD is locked at mount time to keep the scene
+ * deterministic during a demo recording.
+ */
+interface ComputedFamousNEO {
+  neo: FamousNEO;
+  ra_deg: number;
+  dec_deg: number;
+  track: Array<{ ra_deg: number; dec_deg: number }>;
+}
+
+function useComputedFamousNEOs(): ComputedFamousNEO[] {
+  return useMemo(() => {
+    const jd = currentJD();
+    const earth = earthHeliocentricAtJD(jd);
+    return FAMOUS_NEOS.map((neo) => {
+      const helio = heliocentricPositionAtJD(neo.orbit, jd);
+      const { ra_deg, dec_deg } = heliocentricToGeocentricCelestialSphere(
+        helio,
+        earth,
+      );
+      const track = orbitGroundTrack(neo.orbit, 64, jd);
+      return { neo, ra_deg, dec_deg, track };
+    });
+  }, []);
+}
+
 function FamousNEOField({
   onFamousNEOClick,
   selectedDesignation,
@@ -519,22 +558,97 @@ function FamousNEOField({
   onFamousNEOClick?: (designation: string) => void;
   selectedDesignation?: string | null;
 }) {
+  const computed = useComputedFamousNEOs();
   return (
     <>
-      {FAMOUS_NEOS.map((neo) => (
+      {computed.map((c) => (
+        <OrbitGroundTrack
+          key={`track-${c.neo.designation}`}
+          neo={c.neo}
+          track={c.track}
+          selected={c.neo.designation === selectedDesignation}
+        />
+      ))}
+      {computed.map((c) => (
         <FamousNEOMarker
-          key={`${neo.designation}-${neo.name}`}
-          neo={neo}
-          selected={neo.designation === selectedDesignation}
+          key={`${c.neo.designation}-${c.neo.name}`}
+          neo={c.neo}
+          ra_deg={c.ra_deg}
+          dec_deg={c.dec_deg}
+          selected={c.neo.designation === selectedDesignation}
           onClick={
             onFamousNEOClick
-              ? () => onFamousNEOClick(neo.designation)
+              ? () => onFamousNEOClick(c.neo.designation)
               : undefined
           }
         />
       ))}
     </>
   );
+}
+
+function orbitClassColor(orbit_class: FamousNEO["orbit_class"]): string {
+  switch (orbit_class) {
+    case "Apollo":
+      return "#f87171";
+    case "Aten":
+      return "#fb923c";
+    case "Amor":
+      return "#fbbf24";
+    case "Atira":
+      return "#a78bfa";
+    case "Comet":
+      return "#60a5fa";
+    case "MBA":
+      return "#64748b";
+  }
+}
+
+function OrbitGroundTrack({
+  neo,
+  track,
+  selected,
+}: {
+  neo: FamousNEO;
+  track: Array<{ ra_deg: number; dec_deg: number }>;
+  selected: boolean;
+}) {
+  const geom = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const positions = new Float32Array(track.length * 3);
+    // Slightly inside the marker sphere so lines don't z-fight with
+    // textures or the Earth.
+    const R = SPHERE_RADIUS * 0.985;
+    for (let i = 0; i < track.length; i++) {
+      const p = radec_to_xyz(track[i].ra_deg, track[i].dec_deg, R);
+      positions[i * 3] = p.x;
+      positions[i * 3 + 1] = p.y;
+      positions[i * 3 + 2] = p.z;
+    }
+    g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return g;
+  }, [track]);
+
+  const material = useMemo(
+    () =>
+      new THREE.LineBasicMaterial({
+        color: orbitClassColor(neo.orbit_class),
+        transparent: true,
+        opacity: selected ? 0.85 : 0.22,
+      }),
+    [neo.orbit_class, selected],
+  );
+
+  const line = useMemo(() => new THREE.Line(geom, material), [geom, material]);
+
+  useEffect(() => {
+    return () => {
+      geom.dispose();
+      material.dispose();
+    };
+  }, [geom, material]);
+
+  return <primitive object={line} />;
 }
 
 /**
@@ -548,17 +662,21 @@ function FamousNEOField({
  */
 function FamousNEOMarker({
   neo,
+  ra_deg,
+  dec_deg,
   selected,
   onClick,
 }: {
   neo: FamousNEO;
+  ra_deg: number;
+  dec_deg: number;
   selected: boolean;
   onClick?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const pos = useMemo(
-    () => radec_to_xyz(neo.ra_deg, neo.dec_deg, SPHERE_RADIUS * 1.02),
-    [neo.ra_deg, neo.dec_deg],
+    () => radec_to_xyz(ra_deg, dec_deg, SPHERE_RADIUS * 1.02),
+    [ra_deg, dec_deg],
   );
   const baseColor =
     neo.orbit_class === "Apollo" || neo.orbit_class === "Aten"
