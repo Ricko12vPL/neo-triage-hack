@@ -460,7 +460,7 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
   const baseSize = isHero ? 0.09 : hazard.baseSize;
   const size = selected || hovered ? baseSize * 1.45 : baseSize;
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     if (!meshRef.current) return;
 
     // Enter animation: first 900ms, scale grows from 0 → 1 with ease-out.
@@ -479,14 +479,28 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
           hazard.pulseAmp
         : 1;
 
+    // F-5: compensate for camera distance so markers don't collapse
+    // to invisible at max zoom-out (16 AU) or swell to cover the scene
+    // at min zoom-in (2.2 AU). Normalised to the default camera distance
+    // (6.5 world units) and clamped so the compensation itself can't go
+    // extreme.
+    const camDist = camera.position.length();
+    const DEFAULT_CAM_DIST = 6.5;
+    const distScale = Math.max(
+      0.55,
+      Math.min(1.9, camDist / DEFAULT_CAM_DIST),
+    );
+
     if (isHero) {
       const pulse = 1 + Math.sin(clock.elapsedTime * 2.5) * 0.22;
-      meshRef.current.scale.setScalar(pulse * enterScale);
+      meshRef.current.scale.setScalar(pulse * enterScale * distScale);
     } else if (selected) {
       const pulse = 1 + Math.sin(clock.elapsedTime * 3) * 0.14;
-      meshRef.current.scale.setScalar(pulse * enterScale);
+      meshRef.current.scale.setScalar(pulse * enterScale * distScale);
     } else {
-      meshRef.current.scale.setScalar(enterScale * pulseBoost * hazardPulse);
+      meshRef.current.scale.setScalar(
+        enterScale * pulseBoost * hazardPulse * distScale,
+      );
     }
   });
 
@@ -545,25 +559,28 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
         {showLabel && (
           <Html
             center
-            distanceFactor={10}
             style={{ pointerEvents: "none", userSelect: "none" }}
           >
             <div
               style={{
                 fontFamily: "ui-monospace, monospace",
-                fontSize: 10,
+                fontSize: 11,
                 color: "#e5e7eb",
                 background: "rgba(10,10,15,0.72)",
                 padding: "2px 6px",
                 borderRadius: 3,
                 border: "1px solid rgba(255,255,255,0.1)",
                 whiteSpace: "nowrap",
-                transform: `translate(${size * 28 + 6}px, -50%)`,
+                // Offset in screen pixels so the label sits to the right
+                // of the marker at any camera distance. Kept constant
+                // because Html without distanceFactor is already rendered
+                // in screen space.
+                transform: "translate(14px, -50%)",
               }}
             >
               <div style={{ color }}>{candidate.trksub}</div>
               {(selected || hovered) && (
-                <div style={{ color: "#9ca3af", fontSize: 9, marginTop: 2 }}>
+                <div style={{ color: "#9ca3af", fontSize: 10, marginTop: 2 }}>
                   P(NEO) {candidate.prediction.prob_neo.toFixed(2)} ·{" "}
                   {torino.label} · V {candidate.mean_magnitude_v.toFixed(1)}
                 </div>
