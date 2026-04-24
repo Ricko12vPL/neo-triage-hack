@@ -194,6 +194,70 @@ interface MarkerProps {
   onClick: () => void;
 }
 
+interface TorinoHazardStyle {
+  color: string;
+  emissiveIntensity: number;
+  pulseHz: number;
+  pulseAmp: number;
+  baseSize: number;
+}
+
+function torinoHazardStyle(scale: number): TorinoHazardStyle {
+  if (scale >= 6) {
+    return {
+      color: "#991b1b",
+      emissiveIntensity: 1.6,
+      pulseHz: 2.0,
+      pulseAmp: 0.35,
+      baseSize: 0.09,
+    };
+  }
+  if (scale >= 4) {
+    return {
+      color: "#ef4444",
+      emissiveIntensity: 1.25,
+      pulseHz: 1.4,
+      pulseAmp: 0.28,
+      baseSize: 0.08,
+    };
+  }
+  if (scale === 3) {
+    return {
+      color: "#f97316",
+      emissiveIntensity: 0.95,
+      pulseHz: 1.0,
+      pulseAmp: 0.2,
+      baseSize: 0.07,
+    };
+  }
+  if (scale === 2) {
+    return {
+      color: "#eab308",
+      emissiveIntensity: 0.65,
+      pulseHz: 0.5,
+      pulseAmp: 0.12,
+      baseSize: 0.06,
+    };
+  }
+  if (scale === 1) {
+    return {
+      color: "#3b82f6",
+      emissiveIntensity: 0.45,
+      pulseHz: 0,
+      pulseAmp: 0,
+      baseSize: 0.055,
+    };
+  }
+  // Torino 0 — routine, dim
+  return {
+    color: "#64748b",
+    emissiveIntensity: 0.25,
+    pulseHz: 0,
+    pulseAmp: 0,
+    baseSize: 0.045,
+  };
+}
+
 /**
  * F-1 primary-candidate 24 h motion arc.
  *
@@ -377,12 +441,15 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
   );
   const isHero = candidate.trksub === "P21YR4A";
 
-  let color = "#3b82f6";
-  if (torino.scale >= 3) color = "#ef4444";
-  else if (torino.scale === 2) color = "#f59e0b";
-  else if (torino.scale === 1) color = "#eab308";
+  // F-6: Torino-scale visual hierarchy. Colour, emissive intensity, pulse
+  // rate, and base size all scale with hazard level so the eye is drawn
+  // to T3+ objects first and T0 routine candidates recede into the
+  // background. Table comes from internal design review — see
+  // docs/verification/sky-view-forensic-analysis.md §F-6.
+  const hazard = torinoHazardStyle(torino.scale);
+  const color = hazard.color;
 
-  const baseSize = isHero ? 0.09 : torino.scale >= 3 ? 0.075 : 0.055;
+  const baseSize = isHero ? 0.09 : hazard.baseSize;
   const size = selected || hovered ? baseSize * 1.45 : baseSize;
 
   useFrame(({ clock }) => {
@@ -396,6 +463,14 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
       ? 1 + Math.sin(elapsed * 0.008) * 0.35 * (1 - elapsed / 3500)
       : 1;
 
+    // Torino-driven pulse. Hero (YR4 analog) keeps its dramatic 2.5 Hz
+    // beat. Others pulse at hazard.pulseHz · 2π rad/s, or not at all.
+    const hazardPulse =
+      hazard.pulseHz > 0
+        ? 1 + Math.sin(clock.elapsedTime * hazard.pulseHz * 2 * Math.PI) *
+          hazard.pulseAmp
+        : 1;
+
     if (isHero) {
       const pulse = 1 + Math.sin(clock.elapsedTime * 2.5) * 0.22;
       meshRef.current.scale.setScalar(pulse * enterScale);
@@ -403,7 +478,7 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
       const pulse = 1 + Math.sin(clock.elapsedTime * 3) * 0.14;
       meshRef.current.scale.setScalar(pulse * enterScale);
     } else {
-      meshRef.current.scale.setScalar(enterScale * pulseBoost);
+      meshRef.current.scale.setScalar(enterScale * pulseBoost * hazardPulse);
     }
   });
 
@@ -439,7 +514,13 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
           <meshStandardMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={selected || isHero ? 1.6 : hovered ? 1.1 : 0.55}
+            emissiveIntensity={
+              selected || isHero
+                ? Math.max(1.6, hazard.emissiveIntensity + 0.5)
+                : hovered
+                  ? hazard.emissiveIntensity + 0.3
+                  : hazard.emissiveIntensity
+            }
           />
         </mesh>
         {(isHero || selected) && (
