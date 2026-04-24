@@ -248,13 +248,15 @@ function torinoHazardStyle(scale: number): TorinoHazardStyle {
       baseSize: 0.055,
     };
   }
-  // Torino 0 — routine, dim
+  // Torino 0 — routine. Still visible at wide zoom (bump in size +
+  // emissive after F-4 reports confirmed T0 markers were hard to spot
+  // when the camera was zoomed out beyond ~5 AU).
   return {
-    color: "#64748b",
-    emissiveIntensity: 0.25,
+    color: "#94a3b8",
+    emissiveIntensity: 0.5,
     pulseHz: 0,
     pulseAmp: 0,
-    baseSize: 0.045,
+    baseSize: 0.055,
   };
 }
 
@@ -971,6 +973,38 @@ export function SkyViewPanel({
   selectedFamousNEODesignation,
   onDeselect,
 }: Props) {
+  // F-4: defensive filter so a candidate with missing/NaN coords can't
+  // silently disappear from Sky View while still counting in Live Feed.
+  // We keep the entry in the list but log it in dev so the gap is
+  // auditable.
+  const renderableCandidates = useMemo(() => {
+    const good: RankedCandidate[] = [];
+    const bad: Array<{ trksub: string; ra: unknown; dec: unknown }> = [];
+    for (const c of candidates) {
+      if (
+        typeof c.ra_deg === "number" &&
+        Number.isFinite(c.ra_deg) &&
+        typeof c.dec_deg === "number" &&
+        Number.isFinite(c.dec_deg)
+      ) {
+        good.push(c);
+      } else {
+        bad.push({ trksub: c.trksub, ra: c.ra_deg, dec: c.dec_deg });
+      }
+    }
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.debug(
+        "[SkyView] candidate sync",
+        {
+          received: candidates.length,
+          rendered: good.length,
+          skipped_bad_coords: bad,
+        },
+      );
+    }
+    return good;
+  }, [candidates]);
   return (
     <Canvas
       camera={{ position: [0, 1.4, 6.5], fov: 50 }}
@@ -999,7 +1033,7 @@ export function SkyViewPanel({
           onFamousNEOClick={onFamousNEOClick}
           selectedDesignation={selectedFamousNEODesignation}
         />
-        {candidates.map((c) => (
+        {renderableCandidates.map((c) => (
           <CandidateMarker
             key={c.trksub}
             candidate={c}
