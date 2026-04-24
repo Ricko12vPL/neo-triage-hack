@@ -25,7 +25,12 @@ export function SkyViewContainer({
   selectedTrksub,
   onOpenFullBriefing,
 }: Props) {
+  // H-3: cookie-consent modals from NASA Eyes can hijack the iframe in
+  // some EU/UK regions. iframeFailed catches load errors; forceStaticContext
+  // is the demo-safety manual override (button below). Default: iframe.
   const [iframeFailed, setIframeFailed] = useState(false);
+  const [forceStaticContext, setForceStaticContext] = useState(false);
+  const useStaticContext = iframeFailed || forceStaticContext;
   const [viewMode, setViewMode] = useState<ViewMode>("sky");
   const [inspectedTrksub, setInspectedTrksub] = useState<string | null>(
     selectedTrksub,
@@ -206,15 +211,28 @@ export function SkyViewContainer({
           Follow-up capacity doesn't scale 8×. That's the problem neo-triage
           exists to solve.
         </div>
-        <a
-          href={NASA_EYES_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="absolute right-4 top-3 z-10 rounded border border-zinc-700 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-zinc-300 hover:bg-zinc-800 hover:text-white"
-        >
-          Open in new tab ↗
-        </a>
-        {iframeFailed ? (
+        <div className="absolute right-4 top-3 z-10 flex gap-2">
+          <button
+            onClick={() => setForceStaticContext((v) => !v)}
+            className={`rounded border px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
+              forceStaticContext
+                ? "border-violet-700 bg-violet-950/60 text-violet-200"
+                : "border-zinc-700 bg-zinc-900/80 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+            }`}
+            aria-label="Toggle between live iframe and static screenshot"
+          >
+            {forceStaticContext ? "⏸ static" : "▶ live"}
+          </button>
+          <a
+            href={NASA_EYES_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded border border-zinc-700 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-zinc-300 hover:bg-zinc-800 hover:text-white"
+          >
+            Open in new tab ↗
+          </a>
+        </div>
+        {useStaticContext ? (
           <div className="flex h-full items-center justify-center">
             <img
               src="/nasa-eyes-neo-population.png"
