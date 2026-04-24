@@ -1,0 +1,197 @@
+// Bennu
+    orbit: {
+      semi_major_axis_au: 1.128924,
+      eccentricity: 0.204653,
+      inclination_deg: 6.0255,
+      longitude_ascending_node_deg: 2.1786,
+      argument_periapsis_deg: 65.6720,
+      mean_anomaly_deg_j2000: 35.0071,
+      orbital_period_years: 1.1995,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Apophis
+    orbit: {
+      semi_major_axis_au: 0.922342,
+      eccentricity: 0.191393,
+      inclination_deg: 3.3312,
+      longitude_ascending_node_deg: 204.6568,
+      argument_periapsis_deg: 126.0649,
+      mean_anomaly_deg_j2000: 231.6244,
+      orbital_period_years: 0.8858,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Didymos
+    orbit: {
+      semi_major_axis_au: 1.642077,
+      eccentricity: 0.383188,
+      inclination_deg: 3.3965,
+      longitude_ascending_node_deg: 73.4478,
+      argument_periapsis_deg: 318.8861,
+      mean_anomaly_deg_j2000: 65.5184,
+      orbital_period_years: 2.1043,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Ryugu
+    orbit: {
+      semi_major_axis_au: 1.189054,
+      eccentricity: 0.190016,
+      inclination_deg: 5.8845,
+      longitude_ascending_node_deg: 251.7268,
+      argument_periapsis_deg: 211.2723,
+      mean_anomaly_deg_j2000: 288.2727,
+      orbital_period_years: 1.2966,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Itokawa
+    orbit: {
+      semi_major_axis_au: 1.324946,
+      eccentricity: 0.280528,
+      inclination_deg: 1.7171,
+      longitude_ascending_node_deg: 71.6140,
+      argument_periapsis_deg: 160.1385,
+      mean_anomaly_deg_j2000: 43.7682,
+      orbital_period_years: 1.5251,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Eros
+    orbit: {
+      semi_major_axis_au: 1.458339,
+      eccentricity: 0.222758,
+      inclination_deg: 10.8284,
+      longitude_ascending_node_deg: 304.4157,
+      argument_periapsis_deg: 178.6458,
+      mean_anomaly_deg_j2000: 57.4125,
+      orbital_period_years: 1.7611,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Psyche
+    orbit: {
+      semi_major_axis_au: 2.920562,
+      eccentricity: 0.138241,
+      inclination_deg: 3.0934,
+      longitude_ascending_node_deg: 150.4660,
+      argument_periapsis_deg: 229.1191,
+      mean_anomaly_deg_j2000: 335.4933,
+      orbital_period_years: 4.9912,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Ceres
+    orbit: {
+      semi_major_axis_au: 2.766494,
+      eccentricity: 0.078375,
+      inclination_deg: 10.5834,
+      longitude_ascending_node_deg: 80.4944,
+      argument_periapsis_deg: 73.9228,
+      mean_anomaly_deg_j2000: 6.0696,
+      orbital_period_years: 4.6015,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Vesta
+    orbit: {
+      semi_major_axis_au: 2.361535,
+      eccentricity: 0.090023,
+      inclination_deg: 7.1339,
+      longitude_ascending_node_deg: 103.9514,
+      argument_periapsis_deg: 149.5868,
+      mean_anomaly_deg_j2000: 340.8879,
+      orbital_period_years: 3.6291,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Geographos
+    orbit: {
+      semi_major_axis_au: 1.245518,
+      eccentricity: 0.335538,
+      inclination_deg: 13.3402,
+      longitude_ascending_node_deg: 337.3451,
+      argument_periapsis_deg: 276.7422,
+      mean_anomaly_deg_j2000: 348.1544,
+      orbital_period_years: 1.3901,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Toutatis
+    orbit: {
+      semi_major_axis_au: 2.510551,
+      eccentricity: 0.634285,
+      inclination_deg: 0.4697,
+      longitude_ascending_node_deg: 128.3673,
+      argument_periapsis_deg: 274.6831,
+      mean_anomaly_deg_j2000: 283.7035,
+      orbital_period_years: 3.9780,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Dinkinesh
+    orbit: {
+      semi_major_axis_au: 2.191693,
+      eccentricity: 0.112863,
+      inclination_deg: 2.0978,
+      longitude_ascending_node_deg: 21.5875,
+      argument_periapsis_deg: 66.0780,
+      mean_anomaly_deg_j2000: 336.6538,
+      orbital_period_years: 3.2447,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Annefrank
+    orbit: {
+      semi_major_axis_au: 2.213023,
+      eccentricity: 0.063911,
+      inclination_deg: 4.2456,
+      longitude_ascending_node_deg: 120.7457,
+      argument_periapsis_deg: 8.3099,
+      mean_anomaly_deg_j2000: 250.5956,
+      orbital_period_years: 3.2922,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Braille
+    orbit: {
+      semi_major_axis_au: 2.341406,
+      eccentricity: 0.433460,
+      inclination_deg: 28.9493,
+      longitude_ascending_node_deg: 242.1584,
+      argument_periapsis_deg: 355.3543,
+      mean_anomaly_deg_j2000: 44.5945,
+      orbital_period_years: 3.5828,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Gaspra
+    orbit: {
+      semi_major_axis_au: 2.209420,
+      eccentricity: 0.173562,
+      inclination_deg: 4.1027,
+      longitude_ascending_node_deg: 253.3216,
+      argument_periapsis_deg: 129.3066,
+      mean_anomaly_deg_j2000: 96.3529,
+      orbital_period_years: 3.2842,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Ida
+    orbit: {
+      semi_major_axis_au: 2.859690,
+      eccentricity: 0.045755,
+      inclination_deg: 1.1370,
+      longitude_ascending_node_deg: 324.3802,
+      argument_periapsis_deg: 112.2910,
+      mean_anomaly_deg_j2000: 244.2247,
+      orbital_period_years: 4.8360,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// Tempel 1
+    orbit: {
+      semi_major_axis_au: 3.118338,
+      eccentricity: 0.518959,
+      inclination_deg: 10.5414,
+      longitude_ascending_node_deg: 68.9669,
+      argument_periapsis_deg: 178.9110,
+      mean_anomaly_deg_j2000: 359.7106,
+      orbital_period_years: 5.5067,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
+
+// 67P / Churyumov-Gerasimenko
+    orbit: {
+      semi_major_axis_au: 3.511001,
+      eccentricity: 0.631409,
+      inclination_deg: 7.1223,
+      longitude_ascending_node_deg: 50.9911,
+      argument_periapsis_deg: 11.3501,
+      mean_anomaly_deg_j2000: 216.1536,
+      orbital_period_years: 6.5789,
+    },  // JPL Horizons, epoch J2000 (2451545.0), fetched 2026-04-24
