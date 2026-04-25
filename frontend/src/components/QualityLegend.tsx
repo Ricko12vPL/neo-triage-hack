@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { AstrometricGrade, GradeColor } from "../api/types";
 
 /**
@@ -25,38 +25,38 @@ const ROWS: GradeRow[] = [
   {
     grade: "A",
     color: "emerald",
-    label: "High-confidence",
+    label: "High confidence",
     thresholds: "≥10 obs · ≥60 min · V<20 · digest2≥50",
-    context: "rare for live NEOCP",
+    context: "Orbit fit converges tightly",
   },
   {
     grade: "B",
     color: "amber",
     label: "Solid",
     thresholds: "≥6 obs · ≥30 min · V<22",
-    context: "most live MPC tracklets",
+    context: "Adequate for short-arc fit",
   },
   {
     grade: "C",
     color: "orange",
     label: "Marginal",
     thresholds: "≥3 obs · ≥10 min",
-    context: "short tracklets, urgent follow-up",
+    context: "Risk of going stale on NEOCP",
   },
   {
     grade: "F",
     color: "rose",
     label: "Insufficient",
     thresholds: "below all thresholds",
-    context: "pursue immediately or accept loss",
+    context: "Pursue immediately or accept loss",
   },
 ];
 
 const DOT_COLOR: Record<GradeColor, string> = {
-  emerald: "bg-emerald-500",
+  emerald: "bg-emerald-400",
   amber: "bg-amber-400",
   orange: "bg-orange-400",
-  rose: "bg-rose-500",
+  rose: "bg-rose-400",
 };
 
 const TEXT_COLOR: Record<GradeColor, string> = {
@@ -87,16 +87,18 @@ export function QualityLegend() {
   }, []);
 
   return (
-    <div className="border-t border-zinc-900 bg-zinc-950/60 px-4 py-1.5">
+    <div className="border-t border-zinc-900 bg-zinc-950/60 px-4 py-2">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded text-left text-[10px] uppercase tracking-wider text-zinc-500 hover:text-zinc-300"
+        className="flex w-full items-center justify-between gap-2 rounded text-left hover:text-zinc-300"
         aria-expanded={expanded}
       >
-        <span className="flex items-center gap-2">
-          <span className="text-zinc-500">Astrometric Quality</span>
-          <span className="flex items-center gap-1.5 font-mono text-[10px] normal-case tracking-normal">
+        <span className="flex items-center gap-2.5">
+          <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">
+            Astrometric Quality
+          </span>
+          <span className="flex items-center gap-1.5">
             {ROWS.map((r) => (
               <span
                 key={r.grade}
@@ -107,7 +109,9 @@ export function QualityLegend() {
                   aria-hidden
                   className={`inline-block h-1.5 w-1.5 rounded-full ${DOT_COLOR[r.color]}`}
                 />
-                <span className={TEXT_COLOR[r.color]}>{r.grade}</span>
+                <span className={`font-mono text-[10px] font-semibold ${TEXT_COLOR[r.color]}`}>
+                  {r.grade}
+                </span>
               </span>
             ))}
           </span>
@@ -118,36 +122,50 @@ export function QualityLegend() {
       </button>
 
       {expanded && (
-        <ul className="mt-2 space-y-1 font-mono text-[10px] leading-snug">
+        <div className="mt-2.5 grid grid-cols-[18px_1fr] gap-x-3 gap-y-2.5">
           {ROWS.map((r) => (
-            <li key={r.grade} className="grid grid-cols-[18px_64px_1fr] gap-2">
-              <span
-                aria-hidden
-                className={`mt-1 inline-block h-2 w-2 rounded-full ${DOT_COLOR[r.color]}`}
-              />
-              <span className={`uppercase tracking-wide ${TEXT_COLOR[r.color]}`}>
-                {r.grade} {r.label}
-              </span>
-              <span className="text-zinc-500">
-                <span className="text-zinc-400">{r.thresholds}</span>
-                <span className="ml-2 text-zinc-600">· {r.context}</span>
-              </span>
-            </li>
+            <Fragment key={r.grade}>
+              <div className="flex items-start pt-0.5">
+                <span
+                  aria-hidden
+                  className={`inline-block h-2 w-2 rounded-full ${DOT_COLOR[r.color]}`}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className={`font-mono text-[12px] font-bold ${TEXT_COLOR[r.color]}`}
+                  >
+                    {r.grade}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-zinc-300">
+                    {r.label}
+                  </span>
+                </div>
+                <div className="mt-0.5 truncate font-mono text-[10px] text-zinc-400">
+                  {r.thresholds}
+                </div>
+                <div className="text-[10px] leading-snug text-zinc-500">
+                  {r.context}
+                </div>
+              </div>
+            </Fragment>
           ))}
-          <li className="pt-1 text-[9px] uppercase tracking-wide text-zinc-600">
-            Find_Orb-style ·{" "}
+          <div className="col-span-2 mt-1 border-t border-zinc-900 pt-2 text-[9px] italic leading-snug text-zinc-500">
+            Find_Orb-style A/B/C/F grading ·{" "}
             <a
               href="https://www.projectpluto.com/find_orb.htm"
               target="_blank"
               rel="noreferrer noopener"
-              className="text-zinc-500 underline-offset-2 hover:text-zinc-300 hover:underline"
+              className="not-italic text-zinc-400 underline-offset-2 hover:text-zinc-300 hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
-              Bill Gray, projectpluto.com
-            </a>{" "}
-            · simplified · Phase 2 = full residual analysis
-          </li>
-        </ul>
+              Bill Gray · projectpluto.com
+            </a>
+            <br />
+            Simplified — Phase 2 = full residual analysis
+          </div>
+        </div>
       )}
     </div>
   );
