@@ -24,7 +24,8 @@ from backend.models.expert_review import ExpertReview
 from backend.models.schemas import Candidate, Prediction
 from backend.services.astrometric_quality import (
     AstrometricGrade,
-    grade_astrometric_quality,
+    AstrometricQualityBreakdown,
+    grade_astrometric_quality_full,
 )
 from backend.services.expert_classifier import (
     ExpertClassifier,
@@ -55,6 +56,7 @@ class RankedCandidate(Candidate):
     is_demo: bool = False
     expert_review: ExpertReview | None = None
     astrometric_quality_grade: AstrometricGrade = "C"
+    astrometric_quality: AstrometricQualityBreakdown | None = None
 
 
 async def _gather_universe(include_demo: bool, fetch_limit: int) -> list[Candidate]:
@@ -150,21 +152,23 @@ async def rank_candidates(
         except Exception as exc:  # noqa: BLE001 — review failure must not break Live Feed
             _log.warning("expert review batch failed (%s) — serving without reviews", exc)
 
-    return [
-        RankedCandidate(
+    def _build_ranked(candidate: Candidate, prediction: Prediction) -> RankedCandidate:
+        breakdown = grade_astrometric_quality_full(
+            n_observations=candidate.n_observations,
+            arc_length_minutes=candidate.arc_length_minutes,
+            mean_magnitude_v=candidate.mean_magnitude_v,
+            digest2_neo_noid=candidate.digest2_neo_noid,
+        )
+        return RankedCandidate(
             **candidate.model_dump(),
             prediction=prediction,
             is_demo=candidate.trksub in demo_trksubs,
             expert_review=expert_reviews.get(candidate.trksub),
-            astrometric_quality_grade=grade_astrometric_quality(
-                n_observations=candidate.n_observations,
-                arc_length_minutes=candidate.arc_length_minutes,
-                mean_magnitude_v=candidate.mean_magnitude_v,
-                digest2_neo_noid=candidate.digest2_neo_noid,
-            ),
+            astrometric_quality_grade=breakdown.grade,
+            astrometric_quality=breakdown,
         )
-        for candidate, prediction in items[:limit]
-    ]
+
+    return [_build_ranked(candidate, prediction) for candidate, prediction in items[:limit]]
 
 
 @router.get("/expert-review/{trksub}", response_model=ExpertReview)
