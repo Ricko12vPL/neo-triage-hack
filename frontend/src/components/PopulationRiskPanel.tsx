@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type {
-  Candidate,
   PopulationRiskResponse,
+  RankedCandidate,
 } from "../api/types";
+import { DeferredCorridorPlaceholder } from "./DeferredCorridorPlaceholder";
 import { ImpactCorridor2D } from "./ImpactCorridor2D";
 
 /**
@@ -18,19 +19,27 @@ import { ImpactCorridor2D } from "./ImpactCorridor2D";
  * source for CIESIN GPWv4. Architectural pattern matches the academic
  * literature (Liu et al. 2025 Nature on YR4).
  *
- * Render condition (callers): show only when impact_probability >= 1e-7
- * AND (diameter_m OR absolute_magnitude_h) is available — for live MPC
- * tracklets without orbit determination both are None and we silently
- * skip the panel.
+ * Three render branches drive what the operator sees per candidate:
+ *   - 'demo_hypothetical': demo fixtures (P21YR4A) with impact_probability
+ *     and H — full panel + amber YR4-style corridor overlay.
+ *   - 'deferred_pending_od': live MPC tracklets that score as likely NEOs
+ *     but have no impact_probability (orbit determination required first)
+ *     — render DeferredCorridorPlaceholder instead of the full panel.
+ *   - null: low-prob non-NEOs — hide entirely.
  */
 
 interface Props {
-  candidate: Candidate;
+  candidate: RankedCandidate;
 }
 
 const REPRESENTATIVE_IMPACT_LAT = 14.6;
 const REPRESENTATIVE_IMPACT_LON = 120.98;
 const REPRESENTATIVE_IMPACT_LABEL = "Manila metro (representative)";
+
+const PROB_NEO_DEFER_THRESHOLD = 0.5;
+const IP_FULL_PANEL_THRESHOLD = 1e-7;
+
+type CorridorVariant = "demo_hypothetical" | "deferred_pending_od" | null;
 
 function formatPopulation(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
@@ -45,10 +54,26 @@ function formatCasualties(n: number): string {
   return formatPopulation(n);
 }
 
-function shouldRenderForCandidate(c: Candidate): boolean {
+/**
+ * Decide which corridor variant applies to this candidate.
+ *
+ *   demo_hypothetical:  IP>=1e-7 and H known (drives the YR4-style demo).
+ *   deferred_pending_od: live MPC, no IP, but the ranker says it's likely
+ *                       a NEO — we owe the operator an explanation rather
+ *                       than silently hiding the panel.
+ *   null:               hide.
+ */
+function determineVariant(c: RankedCandidate): CorridorVariant {
   const ip = c.impact_probability ?? 0;
-  if (ip < 1e-7) return false;
-  return (c.absolute_magnitude_h ?? null) != null;
+  const has_h = (c.absolute_magnitude_h ?? null) != null;
+  if (ip >= IP_FULL_PANEL_THRESHOLD && has_h) {
+    return "demo_hypothetical";
+  }
+  const prob_neo = c.prediction?.prob_neo ?? 0;
+  if (!c.is_demo && prob_neo >= PROB_NEO_DEFER_THRESHOLD) {
+    return "deferred_pending_od";
+  }
+  return null;
 }
 
 export function PopulationRiskPanel({ candidate }: Props) {
@@ -56,10 +81,11 @@ export function PopulationRiskPanel({ candidate }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const eligible = shouldRenderForCandidate(candidate);
+  const variant = determineVariant(candidate);
+  const fullPanelEligible = variant === "demo_hypothetical";
 
   useEffect(() => {
-    if (!eligible) {
+    if (!fullPanelEligible) {
       setRisk(null);
       setError(null);
       return;
@@ -96,10 +122,19 @@ export function PopulationRiskPanel({ candidate }: Props) {
     candidate.impact_probability,
     candidate.absolute_magnitude_h,
     candidate.rate_arcsec_min,
-    eligible,
+    fullPanelEligible,
   ]);
 
-  if (!eligible) return null;
+  if (variant === null) return null;
+  if (variant === "deferred_pending_od") {
+    return (
+      <DeferredCorridorPlaceholder
+        designation={candidate.trksub}
+        arc_length_minutes={candidate.arc_length_minutes}
+        n_observations={candidate.n_observations}
+      />
+    );
+  }
 
   return (
     <section className="border-t border-orange-900/40 bg-zinc-950/40">
