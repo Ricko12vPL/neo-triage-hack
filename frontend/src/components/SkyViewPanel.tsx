@@ -439,12 +439,13 @@ function useEnterAnimation() {
 /**
  * Halo ring on top of the candidate marker that signals the Opus 4.7
  * expert reviewer's verdict at a glance.
- *  - CONCUR        → subtle green ring (static, low opacity).
- *  - PARTIAL_CONCUR→ static amber ring.
- *  - DISSENT       → pulsing purple ring (1 Hz sin oscillation 0.7→1.0)
- *                    so the eye is drawn to where the expert and the
- *                    ranker disagree — that's where operator attention
- *                    is most needed.
+ *  - CONCUR        → very subtle emerald ring (static, low opacity) —
+ *                    "ranker is right, no action needed", barely visible.
+ *  - PARTIAL_CONCUR→ static amber ring at moderate opacity.
+ *  - DISSENT       → pulsing purple ring (1 Hz sin oscillation 0.6→1.0)
+ *                    + thicker tube so the eye is drawn to where the
+ *                    expert and the ranker disagree — that's where
+ *                    operator attention is most needed.
  */
 function ExpertReviewGlow({
   endorsement,
@@ -460,27 +461,35 @@ function ExpertReviewGlow({
       : endorsement === "PARTIAL_CONCUR"
         ? "#fbbf24"
         : "#10b981";
+  // Tube thickness scales with how much the operator should care about
+  // this ring — DISSENT thickest, CONCUR almost a hairline.
+  const tubeRadius =
+    endorsement === "DISSENT"
+      ? radius * 0.07
+      : endorsement === "PARTIAL_CONCUR"
+        ? radius * 0.045
+        : radius * 0.025;
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
     const material = meshRef.current.material as THREE.MeshBasicMaterial;
     if (endorsement === "DISSENT") {
       const t = clock.elapsedTime * 2 * Math.PI; // 1 Hz
-      material.opacity = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t));
+      material.opacity = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(t));
     } else if (endorsement === "PARTIAL_CONCUR") {
-      material.opacity = 0.5;
+      material.opacity = 0.32;
     } else {
-      material.opacity = 0.4;
+      material.opacity = 0.16;
     }
   });
 
   return (
     <mesh ref={meshRef}>
-      <torusGeometry args={[radius, radius * 0.05, 8, 32]} />
+      <torusGeometry args={[radius, tubeRadius, 8, 32]} />
       <meshBasicMaterial
         color={colorHex}
         transparent
-        opacity={0.4}
+        opacity={0.3}
         depthWrite={false}
       />
     </mesh>
@@ -1072,7 +1081,10 @@ export function SkyViewPanel({
   // F-4: defensive filter so a candidate with missing/NaN coords can't
   // silently disappear from Sky View while still counting in Live Feed.
   // We keep the entry in the list but log it in dev so the gap is
-  // auditable.
+  // auditable. When `showContext === false` (Triage Focus mode), we
+  // additionally hide rows that the operator does not need to act on
+  // tonight: low-P(NEO) routine artefacts unless Opus has explicitly
+  // flagged them with a follow_up / second-epoch action.
   const renderableCandidates = useMemo(() => {
     const good: RankedCandidate[] = [];
     const bad: Array<{ trksub: string; ra: unknown; dec: unknown }> = [];
@@ -1098,8 +1110,21 @@ export function SkyViewPanel({
         },
       );
     }
-    return good;
-  }, [candidates]);
+    if (showContext) return good;
+    // Triage Focus: keep only candidates that genuinely need a decision
+    // tonight. P(NEO) >= 0.5 covers the high-confidence pool; the
+    // Opus-flagged actions cover edge cases where the ranker is unsure
+    // but the expert reviewer thinks the operator should look.
+    const ACTION_FOCUS = new Set([
+      "follow_up_immediately",
+      "request_second_epoch",
+    ]);
+    return good.filter((c) => {
+      if (c.prediction.prob_neo >= 0.5) return true;
+      const action = c.expert_review?.suggested_action;
+      return action != null && ACTION_FOCUS.has(action);
+    });
+  }, [candidates, showContext]);
   return (
     <Canvas
       camera={{ position: [0, 1.4, 6.5], fov: 50 }}

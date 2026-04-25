@@ -79,11 +79,30 @@ export function SkyViewContainer({
     <div className="flex h-full flex-col overflow-hidden">
       {/* TOP — OUR TRIAGE */}
       <div className="relative flex-1 border-b border-zinc-800 bg-[#04060a] min-h-0">
-        <div className="pointer-events-none absolute left-4 top-3 z-10 text-[10px] font-mono uppercase tracking-widest text-zinc-400">
-          {viewMode === "sky"
+        {(() => {
+          // Mirror of SkyViewPanel's Triage Focus filter so the header
+          // count reflects what the operator actually sees on the sphere.
+          const ACTION_FOCUS = new Set([
+            "follow_up_immediately",
+            "request_second_epoch",
+          ]);
+          const focused = candidates.filter(
+            (c) =>
+              c.prediction.prob_neo >= 0.5 ||
+              (c.expert_review?.suggested_action != null &&
+                ACTION_FOCUS.has(c.expert_review.suggested_action)),
+          ).length;
+          const skyLabel = showContext
             ? `Our triage · tonight · ${candidates.length} candidates`
-            : "Orbit view · heliocentric · J2000 elements"}
-        </div>
+            : `Triage focus · ${focused} of ${candidates.length} need a decision`;
+          return (
+            <div className="pointer-events-none absolute left-4 top-3 z-10 text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+              {viewMode === "sky"
+                ? skyLabel
+                : "Orbit view · heliocentric · J2000 elements"}
+            </div>
+          );
+        })()}
 
         {/* View mode toggle */}
         <div className="absolute left-1/2 top-3 z-10 -translate-x-1/2">
@@ -119,9 +138,14 @@ export function SkyViewContainer({
           </div>
         </div>
 
-        {/* Context (famous NEOs + background) toggle — Sky view only */}
+        {/* Context / Triage-focus toggle — Sky view only.
+            CONTEXT ON: full sphere — famous NEO catalog + 12k background
+                        field + every primary candidate.
+            TRIAGE FOCUS: hides famous-NEO + background AND filters
+                          primary candidates to those needing a decision
+                          tonight (P(NEO) >= 0.5 or Opus-flagged action). */}
         {viewMode === "sky" && (
-          <div className="absolute right-4 top-[52px] z-10">
+          <div className="absolute right-4 top-[88px] z-10">
             <button
               onClick={() => setShowContext((v) => !v)}
               className={`rounded-full border px-3 py-1 text-[10px] font-mono uppercase tracking-widest transition-colors ${
@@ -131,8 +155,8 @@ export function SkyViewContainer({
               }`}
               title={
                 showContext
-                  ? "Hide famous NEOs + background catalog"
-                  : "Show famous NEOs + background catalog"
+                  ? "Hide context — show only candidates needing a decision tonight"
+                  : "Show full sphere — famous NEOs + every catalogued tracklet"
               }
               aria-pressed={!showContext}
             >
@@ -143,18 +167,32 @@ export function SkyViewContainer({
 
         {viewMode === "sky" ? (
           <>
-            <div className="pointer-events-none absolute right-4 top-3 z-10 flex flex-col items-end gap-1 text-[9px] font-mono uppercase tracking-wider text-zinc-500">
-              <div>
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 align-middle mr-1" />
-                Torino 3+
+            {/* Compact legend top-right. Torino dots = candidate hazard
+                colour (the marker fill); Opus rings = expert-review verdict
+                (the halo around the marker). Operator can decode any
+                marker's two signals from this card alone. */}
+            <div className="pointer-events-none absolute right-4 top-3 z-10 flex flex-col gap-2 rounded border border-zinc-800/80 bg-zinc-950/80 px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-zinc-400 backdrop-blur-sm">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[8px] text-zinc-600">marker · Torino</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                  <span>3+</span>
+                  <span className="inline-block h-2 w-2 rounded-full bg-amber-500 ml-2" />
+                  <span>2</span>
+                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500 ml-2" />
+                  <span>routine</span>
+                </div>
               </div>
-              <div>
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 align-middle mr-1" />
-                Torino 2
-              </div>
-              <div>
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500 align-middle mr-1" />
-                Routine
+              <div className="flex flex-col gap-0.5 border-t border-zinc-800/60 pt-1">
+                <span className="text-[8px] text-zinc-600">ring · Opus verdict</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-emerald-400" />
+                  <span>concur</span>
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-amber-400 ml-2" />
+                  <span>partial</span>
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-purple-400 ml-2 animate-pulse" />
+                  <span>dissent</span>
+                </div>
               </div>
             </div>
             <div className="pointer-events-none absolute bottom-3 left-4 z-10 text-[9px] font-mono uppercase tracking-wider text-zinc-600">
