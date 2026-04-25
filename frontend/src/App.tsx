@@ -1,10 +1,16 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, streamBriefing } from "./api/client";
-import type { BriefingChunk, RankedCandidate, YR4Milestone } from "./api/types";
+import type {
+  BriefingChunk,
+  ExpertReview,
+  RankedCandidate,
+  YR4Milestone,
+} from "./api/types";
 import { BriefingPanel, type BriefingHistoryEntry } from "./components/BriefingPanel";
 import { CandidateList } from "./components/CandidateList";
 import { CostMeter } from "./components/CostMeter";
 import { DataSourceBadge } from "./components/DataSourceBadge";
+import { ExpertReviewPanel } from "./components/ExpertReviewPanel";
 import { PredictionCard } from "./components/PredictionCard";
 import { AgentAlertBanner } from "./components/AgentAlertBanner";
 import { AgentStatusIndicator } from "./components/AgentStatusIndicator";
@@ -47,6 +53,16 @@ export default function App() {
 
   // Briefing history — session-scoped, last 20 entries
   const [briefingHistory, setBriefingHistory] = useState<BriefingHistoryEntry[]>([]);
+
+  // On-demand expert reviews keyed by trksub. Top-K rows already carry an
+  // expert_review on the wire; non-top-K rows fetch one when first clicked.
+  const [onDemandReviews, setOnDemandReviews] = useState<
+    Record<string, ExpertReview>
+  >({});
+  // Tracks the trksub currently being fetched so the effect doesn't
+  // double-fire. A ref instead of state keeps the effect lint-clean and
+  // avoids an extra render per fetch.
+  const onDemandReviewLoadingRef = useRef<string | null>(null);
 
   // YR4 replay state
   const [yr4Timeline, setYr4Timeline] = useState<YR4Milestone[]>([]);
@@ -113,10 +129,42 @@ export default function App() {
     return [...unique, ...candidates.filter((c) => !agentTrksubs.has(c.trksub))];
   }, [newCandidateEvents, candidates]);
 
-  const selectedCandidate = useMemo(
-    () => displayCandidates.find((c) => c.trksub === selected) ?? null,
-    [displayCandidates, selected],
-  );
+  const selectedCandidate = useMemo(() => {
+    const base = displayCandidates.find((c) => c.trksub === selected) ?? null;
+    if (!base) return null;
+    if (base.expert_review) return base;
+    const fetched = onDemandReviews[base.trksub];
+    return fetched ? { ...base, expert_review: fetched } : base;
+  }, [displayCandidates, selected, onDemandReviews]);
+
+  // Fetch a fresh expert review for any selection that doesn't already
+  // carry one. The backend caches inside its 15-min TTL, so repeated
+  // clicks on the same trksub are nearly free.
+  useEffect(() => {
+    if (!selected) return;
+    const base = displayCandidates.find((c) => c.trksub === selected);
+    if (!base || base.expert_review || onDemandReviews[selected]) return;
+    if (onDemandReviewLoadingRef.current === selected) return;
+    onDemandReviewLoadingRef.current = selected;
+    let cancelled = false;
+    api
+      .expertReview(selected)
+      .then((review) => {
+        if (cancelled) return;
+        setOnDemandReviews((prev) => ({ ...prev, [selected]: review }));
+      })
+      .catch(() => {
+        // Silent fail — Live Feed still works without the review.
+      })
+      .finally(() => {
+        if (!cancelled && onDemandReviewLoadingRef.current === selected) {
+          onDemandReviewLoadingRef.current = null;
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, displayCandidates, onDemandReviews]);
 
   const handleSelect = useCallback(
     async (trksub: string) => {
@@ -289,6 +337,9 @@ export default function App() {
                   candidate={selectedCandidate}
                   observerLocation={observerLocation}
                 />
+                {selectedCandidate.expert_review && (
+                  <ExpertReviewPanel review={selectedCandidate.expert_review} />
+                )}
                 <BriefingPanel
                   reasoning={reasoning}
                   briefing={briefing}
