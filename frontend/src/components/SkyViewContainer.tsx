@@ -39,6 +39,20 @@ export function SkyViewContainer({
     string | null
   >(null);
 
+  // NASA Eyes panel collapsed by default — sits as a thin bar at the
+  // bottom; click expands. Frees the whole viewport for our own
+  // visualisation in default state. Preference persisted.
+  const [nasaExpanded, setNasaExpanded] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("neo-triage-nasa-expanded") === "1";
+  });
+  useEffect(() => {
+    window.localStorage.setItem(
+      "neo-triage-nasa-expanded",
+      nasaExpanded ? "1" : "0",
+    );
+  }, [nasaExpanded]);
+
   // F-7: context toggle — hide the famous-NEO layer and the 12k-point
   // background field so only Earth + grid + primary candidates remain.
   // Persisted so the user's preference survives tab switches.
@@ -53,6 +67,28 @@ export function SkyViewContainer({
       showContext ? "1" : "0",
     );
   }, [showContext]);
+
+  // Class filter — start with all classes visible. Filter applies to
+  // both Sky View markers and (when ?listFilter is wired up) Live Feed.
+  const [classFilter, setClassFilter] = useState<{
+    NEO: boolean;
+    MBA: boolean;
+    COMET: boolean;
+    ARTIFACT: boolean;
+  }>({ NEO: true, MBA: true, COMET: true, ARTIFACT: true });
+  const visibleCandidates = useMemo(
+    () =>
+      candidates.filter((c) => {
+        const cls = c.prediction.map_class;
+        if (cls === "NEO") return classFilter.NEO;
+        if (cls === "MBA") return classFilter.MBA;
+        if (cls === "COMET") return classFilter.COMET;
+        if (cls === "ARTIFACT") return classFilter.ARTIFACT;
+        // UNCONFIRMED is treated as 'always show' — no filter for that bucket.
+        return true;
+      }),
+    [candidates, classFilter],
+  );
 
   const inspected = candidates.find((c) => c.trksub === inspectedTrksub) ?? null;
   const inspectedFamous = useMemo(
@@ -138,20 +174,42 @@ export function SkyViewContainer({
           </div>
         </div>
 
-        {/* Context / Triage-focus toggle — Sky view only.
-            CONTEXT ON: full sphere — famous NEO catalog + 12k background
-                        field + every primary candidate.
-            TRIAGE FOCUS: hides famous-NEO + background AND filters
-                          primary candidates to those needing a decision
-                          tonight (P(NEO) >= 0.5 or Opus-flagged action). */}
+        {/* Filter strip + Triage-focus toggle, centered under the
+            Sky/Orbit View toggle. Visually consistent pill buttons. */}
         {viewMode === "sky" && (
-          <div className="absolute right-4 top-[88px] z-10">
+          <div className="absolute left-1/2 top-[44px] z-10 flex -translate-x-1/2 items-center gap-1.5">
+            {(
+              [
+                ["NEO", "border-emerald-700/70 bg-emerald-950/60 text-emerald-200", "border-zinc-800 bg-zinc-950/70 text-zinc-500"],
+                ["MBA", "border-amber-700/70 bg-amber-950/60 text-amber-200", "border-zinc-800 bg-zinc-950/70 text-zinc-500"],
+                ["COMET", "border-cyan-700/70 bg-cyan-950/60 text-cyan-200", "border-zinc-800 bg-zinc-950/70 text-zinc-500"],
+                ["ARTIFACT", "border-zinc-600 bg-zinc-900/80 text-zinc-300", "border-zinc-900 bg-zinc-950/70 text-zinc-600"],
+              ] as const
+            ).map(([cls, onCls, offCls]) => {
+              const enabled = classFilter[cls];
+              return (
+                <button
+                  key={cls}
+                  onClick={() =>
+                    setClassFilter((prev) => ({ ...prev, [cls]: !prev[cls] }))
+                  }
+                  className={`rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider transition-colors ${
+                    enabled ? onCls : offCls
+                  }`}
+                  aria-pressed={enabled}
+                  title={`${enabled ? "Hide" : "Show"} ${cls} class candidates`}
+                >
+                  {enabled ? "" : "✕ "}{cls}
+                </button>
+              );
+            })}
+            <span className="mx-1 h-3 w-px bg-zinc-700" />
             <button
               onClick={() => setShowContext((v) => !v)}
-              className={`rounded-full border px-3 py-1 text-[10px] font-mono uppercase tracking-widest transition-colors ${
+              className={`rounded-full border px-3 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${
                 showContext
-                  ? "border-zinc-600 bg-zinc-900/80 text-zinc-200 hover:bg-zinc-800"
-                  : "border-emerald-700 bg-emerald-950/70 text-emerald-200 hover:bg-emerald-900/70"
+                  ? "border-zinc-700 bg-zinc-950/80 text-zinc-300 hover:bg-zinc-900"
+                  : "border-blue-700/80 bg-blue-950/70 text-blue-200 hover:bg-blue-900/70"
               }`}
               title={
                 showContext
@@ -160,18 +218,19 @@ export function SkyViewContainer({
               }
               aria-pressed={!showContext}
             >
-              {showContext ? "👁 Context ON" : "🎯 Triage focus"}
+              {showContext ? "👁 Context" : "🎯 Triage focus"}
             </button>
           </div>
         )}
 
         {viewMode === "sky" ? (
           <>
-            {/* Compact legend top-right. Torino dots = candidate hazard
-                colour (the marker fill); Opus rings = expert-review verdict
-                (the halo around the marker). Operator can decode any
-                marker's two signals from this card alone. */}
-            <div className="pointer-events-none absolute right-4 top-3 z-10 flex flex-col gap-2 rounded border border-zinc-800/80 bg-zinc-950/80 px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-zinc-400 backdrop-blur-sm">
+            {/* Compact legend — moved to LEFT side so it never collides
+                with the candidate-details panel that slides in from the
+                right. Torino dots = candidate hazard colour (the marker
+                fill); Opus rings = expert-review verdict (the halo around
+                the marker). */}
+            <div className="pointer-events-none absolute left-4 top-12 z-10 flex flex-col gap-2 rounded border border-zinc-800/80 bg-zinc-950/80 px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-zinc-400 backdrop-blur-sm">
               <div className="flex flex-col gap-0.5">
                 <span className="text-[8px] text-zinc-600">marker · Torino</span>
                 <div className="flex items-center gap-1.5">
@@ -203,7 +262,7 @@ export function SkyViewContainer({
               <span className="text-slate-500/80">— —</span> celestial equator
             </div>
             <SkyViewPanel
-              candidates={candidates}
+              candidates={visibleCandidates}
               selectedTrksub={inspectedTrksub}
               onCandidateClick={handleCandidateClick}
               onFamousNEOClick={handleFamousNEOClick}
@@ -279,11 +338,31 @@ export function SkyViewContainer({
         )}
       </div>
 
-      {/* BOTTOM — NASA EYES CONTEXT */}
-      <div className="relative h-[38vh] min-h-[260px] flex-none bg-black">
-        <div className="pointer-events-none absolute left-4 top-3 z-10 text-[10px] font-mono uppercase tracking-widest text-zinc-400">
-          Planetary context · NASA Eyes on Asteroids · 37k+ NEO population
-        </div>
+      {/* BOTTOM — NASA EYES CONTEXT (collapsible).
+          Default: thin 36 px bar with chevron + label.
+          Expanded: 38vh panel (the previous default height).
+          Click the bar to slide between states. */}
+      <button
+        onClick={() => setNasaExpanded((v) => !v)}
+        className="flex w-full flex-none items-center justify-between border-t border-zinc-800 bg-zinc-950/90 px-4 py-2 text-left transition-colors hover:bg-zinc-900"
+        aria-expanded={nasaExpanded}
+        aria-controls="nasa-eyes-panel"
+      >
+        <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+          NASA Eyes on Asteroids · 37k+ NEO population
+        </span>
+        <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+          <span>{nasaExpanded ? "click to collapse" : "click to expand"}</span>
+          <span aria-hidden>{nasaExpanded ? "▼" : "▲"}</span>
+        </span>
+      </button>
+      <div
+        id="nasa-eyes-panel"
+        className={`relative flex-none overflow-hidden bg-black transition-all duration-300 ease-out ${
+          nasaExpanded ? "h-[38vh] min-h-[260px]" : "h-0"
+        }`}
+        aria-hidden={!nasaExpanded}
+      >
         <div className="pointer-events-none absolute bottom-3 left-4 z-10 hidden max-w-md rounded bg-black/60 p-2 text-[10px] text-zinc-400 backdrop-blur-sm sm:block">
           Above: what <em>we</em> are watching. Below: the full catalog NASA/JPL
           tracks in 2026 — every labelled point is a known NEO. Rubin

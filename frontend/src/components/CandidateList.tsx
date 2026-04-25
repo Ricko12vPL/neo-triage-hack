@@ -11,6 +11,7 @@ import {
 } from "../lib/visibility";
 import { TorinoBadge } from "./TorinoBadge";
 import { ExpertReviewChip } from "./ExpertReviewChip";
+import { SourceBadge } from "./SourceBadge";
 
 interface Props {
   candidates: RankedCandidate[];
@@ -136,16 +137,31 @@ export function CandidateList({
         </h2>
         <p className="mt-0.5 text-[11px] text-zinc-600">
           {(() => {
-            const live = candidates.filter((c) => !c.is_demo).length;
-            const demo = candidates.length - live;
+            // Counts derive purely from the candidate list — no server-side
+            // count to drift from. Live = LIVE_MPC_NEOCP (or unset, default
+            // live for backwards compat), Demo = DEMO_FIXTURE, Synthetic =
+            // SYNTHETIC_INJECTION, Reviewed = has expert_review.
+            const live = candidates.filter(
+              (c) =>
+                !c.data_source ||
+                c.data_source === "LIVE_MPC_NEOCP",
+            ).length;
+            const demo = candidates.filter(
+              (c) => c.data_source === "DEMO_FIXTURE",
+            ).length;
+            const synth = candidates.filter(
+              (c) => c.data_source === "SYNTHETIC_INJECTION",
+            ).length;
             const reviewed = candidates.filter((c) => c.expert_review).length;
-            const split =
-              demo > 0
-                ? `${live} live · ${demo} demo`
-                : `${candidates.length} objects`;
-            return reviewed > 0
-              ? `${split} · ${reviewed} opus-reviewed · click any to brief`
-              : `${split} · click to brief`;
+            const segments = [
+              live > 0 ? `${live} live` : null,
+              demo > 0 ? `${demo} demo` : null,
+              synth > 0 ? `${synth} synthetic` : null,
+              reviewed > 0 ? `${reviewed} opus-reviewed` : null,
+            ].filter(Boolean);
+            return segments.length > 0
+              ? `${segments.join(" · ")} · click any to brief`
+              : "no candidates · agent will detect within 2 min";
           })()}
         </p>
       </header>
@@ -220,14 +236,10 @@ export function CandidateList({
                       absolute_magnitude_h={c.absolute_magnitude_h}
                       variant="inline"
                     />
-                    {c.is_demo && (
-                      <span
-                        className="rounded-sm border border-violet-700/60 bg-violet-950/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-violet-300"
-                        title="Curated demo fixture (P21YR4A and friends). Kept alongside live NEOCP so the briefing demo always has a hazardous anchor."
-                      >
-                        DEMO
-                      </span>
-                    )}
+                    <SourceBadge
+                      source={c.data_source}
+                      fetchedAt={c.data_source_fetched_at_utc}
+                    />
                     {c.expert_review ? (
                       <ExpertReviewChip review={c.expert_review} />
                     ) : (

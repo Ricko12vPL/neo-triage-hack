@@ -25,7 +25,7 @@ NEOCP_LIST_URL = "https://www.minorplanetcenter.net/iau/NEO/neocp.txt"
 NEOCP_OBS_URL = (
     "https://www.minorplanetcenter.net/cgi-bin/showobsorbs.cgi?Obj={trksub}&obs=y"
 )
-CACHE_TTL_MINUTES = 15
+CACHE_TTL_MINUTES = 2  # 2-min TTL — real-time triage (was 15 min)
 _OBLIQUITY_RAD = math.radians(23.439291111)  # J2000 mean obliquity
 RATE_FALLBACK = 2.0  # arcsec/min used when obs fetch fails
 # Hard cap on per-candidate rate fetches per cycle. NEOCP normally has
@@ -33,10 +33,23 @@ RATE_FALLBACK = 2.0  # arcsec/min used when obs fetch fails
 # spawning hundreds of concurrent CGI hits against the MPC observation
 # server. Entries beyond the cap fall back to RATE_FALLBACK + "???" obs.
 MAX_RATE_FETCHES = 80
+# MPC etiquette — identify ourselves on every fetch.
+USER_AGENT = "neo-triage/1.0 (hackathon project; https://github.com/Ricko12vPL/neo-triage-hack)"
 
 
 _cache: list[Candidate] = []
 _cache_at: datetime | None = None
+
+
+def cache_state() -> dict[str, object]:
+    """Public accessor for cache freshness — used by /api/meta/data-source."""
+    return {
+        "candidate_count": len(_cache),
+        "last_fetched_at_utc": (
+            _cache_at.isoformat().replace("+00:00", "Z") if _cache_at else None
+        ),
+        "ttl_seconds": CACHE_TTL_MINUTES * 60,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +199,12 @@ async def _fetch_rate_and_code(
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def _build_candidate(data: dict[str, Any], rate: float, obs_code: str) -> Candidate:
+def _build_candidate(
+    data: dict[str, Any],
+    rate: float,
+    obs_code: str,
+    fetched_at: datetime,
+) -> Candidate:
     return Candidate(
         trksub=data["trksub"],
         ra_deg=data["ra_deg"],
@@ -199,6 +217,9 @@ def _build_candidate(data: dict[str, Any], rate: float, obs_code: str) -> Candid
         arc_length_minutes=data["arc_length_minutes"],
         digest2_neo_noid=data["digest2_neo_noid"],
         ecliptic_latitude_deg=data["ecliptic_latitude_deg"],
+        data_source="LIVE_MPC_NEOCP",
+        data_source_url=NEOCP_LIST_URL,
+        data_source_fetched_at_utc=fetched_at,
     )
 
 
@@ -221,7 +242,7 @@ async def fetch_neocp_candidates(limit: int = 20) -> list[Candidate]:
         return _cache[:limit]
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
             resp = await client.get(NEOCP_LIST_URL, timeout=15.0)
             resp.raise_for_status()
 
@@ -247,10 +268,10 @@ async def fetch_neocp_candidates(limit: int = 20) -> list[Candidate]:
                     rate, obs_code = RATE_FALLBACK, "???"
                 else:
                     rate, obs_code = result
-                candidates.append(_build_candidate(data, rate, obs_code))
+                candidates.append(_build_candidate(data, rate, obs_code, now))
 
             for data in parsed[MAX_RATE_FETCHES:]:
-                candidates.append(_build_candidate(data, RATE_FALLBACK, "???"))
+                candidates.append(_build_candidate(data, RATE_FALLBACK, "???", now))
 
         _cache = candidates
         _cache_at = now

@@ -10,6 +10,7 @@ import { BriefingPanel, type BriefingHistoryEntry } from "./components/BriefingP
 import { CandidateList } from "./components/CandidateList";
 import { CostMeter } from "./components/CostMeter";
 import { DataSourceBadge } from "./components/DataSourceBadge";
+import { DemoInjectionMenu } from "./components/DemoInjectionMenu";
 import { ExpertReviewPanel } from "./components/ExpertReviewPanel";
 import { PredictionCard } from "./components/PredictionCard";
 import { AgentAlertBanner } from "./components/AgentAlertBanner";
@@ -121,10 +122,17 @@ export default function App() {
     api.yr4Timeline().then(setYr4Timeline).catch(() => {});
   }, [mode, yr4Timeline.length]);
 
-  // Merge agent-detected candidates into the ranked list
+  // Merge agent-detected candidates into the ranked list. Agent events
+  // carry their own expert_review payload (from the backend's WS
+  // broadcast) and a `source` flag — preserve both so the live row
+  // lights up correctly without a follow-up fetch.
   const displayCandidates = useMemo(() => {
     const agentNew = newCandidateEvents.map(
-      (e): RankedCandidate => ({ ...e.candidate, prediction: e.prediction }),
+      (e): RankedCandidate => ({
+        ...e.candidate,
+        prediction: e.prediction,
+        expert_review: e.expert_review ?? null,
+      }),
     );
     const agentTrksubs = new Set(agentNew.map((c) => c.trksub));
     const unique = agentNew.filter(
@@ -301,6 +309,7 @@ export default function App() {
             connectionStatus={connectionStatus}
           />
           <DataSourceBadge />
+          <DemoInjectionMenu />
           <CostMeter />
         </div>
       </header>

@@ -46,6 +46,20 @@ export const api = {
     getJson<ExpertReview>(
       `/api/rank/expert-review/${encodeURIComponent(trksub)}`,
     ),
+  injectSynthetic: async (
+    template: "p21yr4a_replay" | "p21lowrt_dissent" | "high_confidence_neo",
+  ) => {
+    const resp = await fetch(`${BASE}/api/agent/inject-synthetic?template=${template}`, {
+      method: "POST",
+    });
+    if (!resp.ok) throw new Error(`inject-synthetic failed: ${resp.status}`);
+    return (await resp.json()) as {
+      injected_trksub: string;
+      template: string;
+      timestamp_utc: string;
+      expert_review_endorsement: string | null;
+    };
+  },
   cost: () => getJson<CostSummary>("/api/cost/"),
   agentStatus: () => getJson<AgentStatus>("/api/agent/status"),
   dataSource: () => getJson<DataSourceReport>("/api/meta/data-source"),

@@ -38,7 +38,7 @@ from backend.services.ranker import get_ranker
 
 _log = logging.getLogger(__name__)
 
-CYCLE_INTERVAL_SECONDS = 300        # 5 minutes
+CYCLE_INTERVAL_SECONDS = 120        # 2 minutes — real-time triage (matches scraper TTL)
 COST_CAP_USD = 25.0                 # stop Claude calls above this; loop continues
 MAX_BRIEFINGS_PER_CYCLE = 3         # cost control: max Opus calls per cycle
 EXPERT_TOP_K = 20                   # top-by-P(NEO) reviewed each cycle (cache-friendly)
@@ -209,6 +209,7 @@ async def agent_loop() -> None:
                 await notifier.broadcast(
                     {
                         "type": "new_candidate",
+                        "source": "REAL_MPC_DIFF",
                         "candidate": candidate.model_dump(mode="json"),
                         "prediction": prediction.model_dump(mode="json"),
                         "briefing_preview": preview,

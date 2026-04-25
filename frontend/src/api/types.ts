@@ -21,6 +21,11 @@ export type ChunkType =
   | "done"
   | "error";
 
+export type DataSource =
+  | "LIVE_MPC_NEOCP"
+  | "DEMO_FIXTURE"
+  | "SYNTHETIC_INJECTION";
+
 export interface Candidate {
   trksub: string;
   ra_deg: number;
@@ -33,9 +38,11 @@ export interface Candidate {
   arc_length_minutes: number;
   digest2_neo_noid: number;
   ecliptic_latitude_deg: number;
-  // Optional Torino inputs, enriched from orbit determination.
   impact_probability?: number | null;
   absolute_magnitude_h?: number | null;
+  data_source?: DataSource;
+  data_source_url?: string | null;
+  data_source_fetched_at_utc?: string | null;
 }
 
 export interface Prediction {
@@ -117,18 +124,33 @@ export interface BriefingRequest {
   observer_location?: string | null;
 }
 
+export interface StreamReport {
+  source: DataSource;
+  label: string;
+  description: string;
+  url: string | null;
+  candidate_count: number;
+  last_fetched_at_utc: string | null;
+  next_scheduled_fetch_at_utc: string | null;
+  ttl_seconds: number | null;
+  fetch_status: "OK" | "ERROR" | "EMPTY" | "STATIC";
+  error_message: string | null;
+}
+
 export interface DataSourceReport {
-  primary_source: "mock" | "live_neocp" | "hybrid";
-  primary_description: string;
-  primary_count: number;
+  streams: StreamReport[];
   retrieved_at_utc: string;
-  live_feed_available: boolean;
-  live_feed_candidate_count: number | null;
-  live_feed_sample_trksubs: string[];
   famous_neos_count: number;
   famous_neos_epoch_jd: number;
   famous_neos_last_verified: string;
   notes: string;
+  // Backwards-compat fields, still emitted by /api/meta/data-source
+  primary_source?: "mock" | "live_neocp" | "hybrid";
+  primary_description?: string;
+  primary_count?: number;
+  live_feed_available?: boolean;
+  live_feed_candidate_count?: number | null;
+  live_feed_sample_trksubs?: string[];
 }
 
 export interface CostSummary {
@@ -160,6 +182,8 @@ export interface AgentEventNewCandidate {
   prediction: Prediction;
   briefing_preview: string;
   timestamp: string;
+  source?: "REAL_MPC_DIFF" | "SYNTHETIC_INJECTION";
+  expert_review?: ExpertReview | null;
 }
 
 export interface AgentEventCycleComplete {

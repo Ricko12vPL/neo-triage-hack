@@ -34,6 +34,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         ecliptic_latitude_deg=-14.8,
         impact_probability=0.0008,
         absolute_magnitude_h=22.3,
+        data_source='DEMO_FIXTURE',
     ),
     Candidate(
         trksub="P21b7Pm",
@@ -49,6 +50,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         ecliptic_latitude_deg=-4.2,
         impact_probability=0.00015,
         absolute_magnitude_h=21.1,
+        data_source='DEMO_FIXTURE',
     ),
     Candidate(
         trksub="P21c9Qr",
@@ -64,6 +66,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         ecliptic_latitude_deg=1.9,
         impact_probability=0.0002,
         absolute_magnitude_h=23.4,
+        data_source='DEMO_FIXTURE',
     ),
     # --- Likely main-belt contaminants --------------------------------
     Candidate(
@@ -78,6 +81,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=35.0,
         digest2_neo_noid=52,
         ecliptic_latitude_deg=-1.2,
+        data_source='DEMO_FIXTURE',
     ),
     Candidate(
         trksub="P21e5Zt",
@@ -91,6 +95,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=30.0,
         digest2_neo_noid=48,
         ecliptic_latitude_deg=0.8,
+        data_source='DEMO_FIXTURE',
     ),
     # --- Artifacts ----------------------------------------------------
     Candidate(
@@ -105,6 +110,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=4.0,
         digest2_neo_noid=22,
         ecliptic_latitude_deg=60.4,
+        data_source='DEMO_FIXTURE',
     ),
     Candidate(
         trksub="P21g8Bc",
@@ -118,6 +124,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         arc_length_minutes=3.0,
         digest2_neo_noid=28,
         ecliptic_latitude_deg=-49.7,
+        data_source='DEMO_FIXTURE',
     ),
     # --- Intermediate cases -------------------------------------------
     Candidate(
@@ -134,6 +141,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         ecliptic_latitude_deg=-7.9,
         impact_probability=4e-6,
         absolute_magnitude_h=22.9,
+        data_source='DEMO_FIXTURE',
     ),
     Candidate(
         trksub="P21i6Ee",
@@ -149,6 +157,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         ecliptic_latitude_deg=-11.8,
         impact_probability=2e-5,
         absolute_magnitude_h=22.7,
+        data_source='DEMO_FIXTURE',
     ),
     # --- YR4 analog — demo hero ---------------------------------------
     # Real 2024 YR4 peak-window values: IP ~2.4%, H ~24.0
@@ -166,6 +175,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         ecliptic_latitude_deg=0.5,
         impact_probability=0.024,
         absolute_magnitude_h=24.0,
+        data_source='DEMO_FIXTURE',
     ),
     # --- Hybrid-classifier disagreement fixture (Opus DISSENT demo) -----
     # Crafted so the Bayesian ranker (rate/mag/digest2/ecliptic-latitude
@@ -194,5 +204,6 @@ MOCK_CANDIDATES: list[Candidate] = [
         digest2_neo_noid=68,
         ecliptic_latitude_deg=-1.8,
         absolute_magnitude_h=20.5,
+        data_source='DEMO_FIXTURE',
     ),
 ]
