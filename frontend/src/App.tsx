@@ -10,6 +10,7 @@ import { BriefingPanel, type BriefingHistoryEntry } from "./components/BriefingP
 import { CandidateList } from "./components/CandidateList";
 import { DataSourceBadge } from "./components/DataSourceBadge";
 import { ExpertReviewPanel } from "./components/ExpertReviewPanel";
+import { PopulationRiskPanel } from "./components/PopulationRiskPanel";
 import { PredictionCard } from "./components/PredictionCard";
 import { AgentAlertBanner } from "./components/AgentAlertBanner";
 import { AgentStatusIndicator } from "./components/AgentStatusIndicator";
@@ -378,6 +379,7 @@ export default function App() {
                     setStreamError(null);
                   }}
                 />
+                <PopulationRiskPanel candidate={selectedCandidate} />
                 {selectedCandidate.expert_review && (
                   <ExpertReviewPanel review={selectedCandidate.expert_review} />
                 )}

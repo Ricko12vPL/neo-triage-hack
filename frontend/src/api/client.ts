@@ -14,6 +14,8 @@ import type {
   CrossValidationReport,
   DataSourceReport,
   ExpertReview,
+  PopulationRiskRequest,
+  PopulationRiskResponse,
   Prediction,
   RankedCandidate,
   SentryDetailReport,
@@ -77,6 +79,18 @@ export const api = {
     getJson<CloseApproach[]>(
       `/api/external/jpl-cad/${encodeURIComponent(designation)}?years_window=${yearsWindow}`,
     ),
+  populationRisk: async (request: PopulationRiskRequest) => {
+    const resp = await fetch(`${BASE}/api/risk/population-weighted`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    if (!resp.ok) {
+      const detail = await resp.text().catch(() => resp.statusText);
+      throw new Error(`POST /api/risk/population-weighted failed: ${resp.status} ${detail}`);
+    }
+    return (await resp.json()) as PopulationRiskResponse;
+  },
 };
 
 /** Parse SSE body into BriefingChunk stream. Shared by all streaming endpoints. */

@@ -26,6 +26,7 @@ from backend.routers import (  # noqa: E402
     cost,
     external,
     meta,
+    population_risk,
     rank,
     replay,
 )
@@ -104,6 +105,7 @@ app.include_router(briefing.router)
 app.include_router(cost.router)
 app.include_router(external.router)
 app.include_router(meta.router)
+app.include_router(population_risk.router)
 app.include_router(rank.router)
 app.include_router(replay.router)
 app.include_router(ws_router.router)

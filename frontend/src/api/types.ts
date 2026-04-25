@@ -267,6 +267,44 @@ export interface AegisRiskEntry {
   source_url: string;
 }
 
+export interface PopulationRiskRequest {
+  designation: string;
+  impact_probability: number;
+  velocity_km_s: number;
+  diameter_m?: number | null;
+  absolute_magnitude_h?: number | null;
+  albedo?: number;
+  density_kg_m3?: number;
+  impact_latitude_deg?: number;
+  impact_longitude_deg?: number;
+}
+
+export interface PopulationRiskResponse {
+  designation: string;
+  diameter_m: number;
+  velocity_km_s: number;
+  impact_probability: number;
+  energy_megatons_tnt: number;
+  severe_damage_radius_km: number;
+  thermal_radiation_radius_km: number;
+  seismic_radius_km: number;
+  population_in_zone: number;
+  cities_in_zone: string[];
+  metro_population_in_zone: number;
+  background_population_in_zone: number;
+  expected_casualties_unconditional: number;
+  expected_casualties_if_impact: number;
+  impact_latitude_deg: number;
+  impact_longitude_deg: number;
+  local_density_per_km2: number;
+  casualty_fraction_assumed: number;
+  population_grid_source: string;
+  caveat: string;
+  methodology: string;
+  grade: "demo" | "production";
+  computed_at_utc: string;
+}
+
 export interface CloseApproach {
   designation: string;
   julian_date: number;
