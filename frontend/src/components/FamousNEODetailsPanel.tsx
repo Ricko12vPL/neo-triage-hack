@@ -1,4 +1,5 @@
 import type { FamousNEO } from "../lib/famous_neos";
+import { JPLSentryBadge } from "./JPLSentryBadge";
 
 interface Props {
   neo: FamousNEO;
@@ -133,6 +134,18 @@ export function FamousNEODetailsPanel({ neo, onClose }: Props) {
             {ORBIT_CLASS_DESCRIPTION[neo.orbit_class]}
           </p>
         </div>
+
+        <Section title="Cross-validation (production systems)">
+          <div className="space-y-1.5">
+            <JPLSentryBadge designation={neo.designation} />
+          </div>
+          <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+            Independent impact-monitoring verdicts from production planetary
+            defense systems. neo-triage is a triage layer — it does not
+            replace JPL Sentry-II or ESA NEOCC Aegis. Click a chip for
+            details, methodology, and source link.
+          </p>
+        </Section>
 
         <Section title="Physical">
           <Row

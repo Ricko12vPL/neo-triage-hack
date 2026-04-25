@@ -205,6 +205,50 @@ export type AgentEvent =
 
 // ---- YR4 Replay types ----------------------------------------------------
 
+// ---- External planetary-defense data sources ----------------------------
+
+export type SentryStatus = "IN_RISK_LIST" | "REMOVED" | "NOT_FOUND" | "ERROR";
+
+export interface SentryVI {
+  date: string;
+  energy_mt_tnt: number;
+  impact_probability: number;
+  palermo_scale: number;
+  torino_scale: number | null;
+  sigma: number | null;
+}
+
+export interface SentryObjectSummary {
+  designation: string;
+  fullname: string | null;
+  diameter_km: number | null;
+  h: number | null;
+  impact_probability_cumulative: number;
+  palermo_scale_cumulative: number;
+  palermo_scale_max: number;
+  torino_scale_max: number | null;
+  n_impacts: number;
+  impact_year_range: string;
+  last_observed: string | null;
+  velocity_infinity_km_s: number | null;
+  velocity_impact_km_s: number | null;
+  method: "IOBS" | "LOV" | "MC" | "unknown";
+  fetched_at_utc: string;
+  source: string;
+  source_url: string;
+}
+
+export interface SentryDetailReport {
+  designation_query: string;
+  status: SentryStatus;
+  summary: SentryObjectSummary | null;
+  virtual_impactors: SentryVI[];
+  removed_at_utc: string | null;
+  error_message: string | null;
+  fetched_at_utc: string;
+  cache_hit: boolean;
+}
+
 export interface YR4Milestone {
   hour: number;
   n_observations: number;

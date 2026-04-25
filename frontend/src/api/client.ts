@@ -13,6 +13,8 @@ import type {
   ExpertReview,
   Prediction,
   RankedCandidate,
+  SentryDetailReport,
+  SentryObjectSummary,
   YR4Milestone,
 } from "./types";
 
@@ -52,6 +54,12 @@ export const api = {
   yr4Timeline: () => getJson<YR4Milestone[]>("/api/replay/yr4"),
   yr4Milestone: (hour: number) =>
     getJson<YR4Milestone>(`/api/replay/yr4/${hour}`),
+  jplSentrySummary: () =>
+    getJson<SentryObjectSummary[]>("/api/external/jpl-sentry/summary"),
+  jplSentryDetail: (designation: string) =>
+    getJson<SentryDetailReport>(
+      `/api/external/jpl-sentry/${encodeURIComponent(designation)}`,
+    ),
 };
 
 /** Parse SSE body into BriefingChunk stream. Shared by all streaming endpoints. */

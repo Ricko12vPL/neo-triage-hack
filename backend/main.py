@@ -24,6 +24,7 @@ from backend.routers import (  # noqa: E402
     briefing,
     candidates,
     cost,
+    external,
     meta,
     rank,
     replay,
@@ -101,6 +102,7 @@ app.add_middleware(
 app.include_router(candidates.router)
 app.include_router(briefing.router)
 app.include_router(cost.router)
+app.include_router(external.router)
 app.include_router(meta.router)
 app.include_router(rank.router)
 app.include_router(replay.router)
