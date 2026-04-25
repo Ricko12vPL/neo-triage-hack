@@ -8,7 +8,6 @@ import type {
 } from "./api/types";
 import { BriefingPanel, type BriefingHistoryEntry } from "./components/BriefingPanel";
 import { CandidateList } from "./components/CandidateList";
-import { CostMeter } from "./components/CostMeter";
 import { DataSourceBadge } from "./components/DataSourceBadge";
 import { DemoInjectionMenu } from "./components/DemoInjectionMenu";
 import { ExpertReviewPanel } from "./components/ExpertReviewPanel";
@@ -310,7 +309,6 @@ export default function App() {
           />
           <DataSourceBadge />
           <DemoInjectionMenu />
-          <CostMeter />
         </div>
       </header>
 
