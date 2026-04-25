@@ -40,6 +40,7 @@ export interface Candidate {
   data_source?: DataSource;
   data_source_url?: string | null;
   data_source_fetched_at_utc?: string | null;
+  impactor_case_designation?: string | null;
 }
 
 export interface Prediction {
