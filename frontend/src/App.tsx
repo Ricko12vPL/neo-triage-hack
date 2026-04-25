@@ -260,7 +260,15 @@ export default function App() {
       />
 
       {mode === "live" && (
-        <main className="grid grid-rows-[auto_1fr] overflow-hidden md:grid-rows-none md:grid-cols-[320px_1fr]">
+        // grid-rows-[minmax(0,1fr)] on md+ constrains the single row to
+        // the parent's height instead of letting auto-rows grow with
+        // content. Without this, agent-pushed candidates (live-NEOCP
+        // tracklets that arrive over WebSocket on top of the 10 ranked
+        // mocks) made the aside taller than the viewport — overflow-
+        // hidden on main clipped the bottom rows and the inner
+        // overflow-y-auto could not trigger because the aside itself
+        // was not height-constrained.
+        <main className="grid grid-rows-[auto_1fr] overflow-hidden md:grid-cols-[320px_1fr] md:grid-rows-[minmax(0,1fr)]">
           <CandidateList
             candidates={displayCandidates}
             selected={selected}

@@ -126,7 +126,7 @@ export function CandidateList({
   }, [candidates, sortKey, phaOnly]);
 
   return (
-    <aside className="flex h-full max-h-[55vh] flex-col border-b border-zinc-800 bg-zinc-950/40 md:max-h-none md:border-b-0 md:border-r">
+    <aside className="flex h-full max-h-[55vh] min-h-0 flex-col border-b border-zinc-800 bg-zinc-950/40 md:max-h-none md:border-b-0 md:border-r">
       <header className="border-b border-zinc-800 px-4 py-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
           NEOCP Candidates
