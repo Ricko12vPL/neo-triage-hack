@@ -21,10 +21,7 @@ export type ChunkType =
   | "done"
   | "error";
 
-export type DataSource =
-  | "LIVE_MPC_NEOCP"
-  | "DEMO_FIXTURE"
-  | "SYNTHETIC_INJECTION";
+export type DataSource = "LIVE_MPC_NEOCP" | "DEMO_FIXTURE";
 
 export interface Candidate {
   trksub: string;
@@ -182,7 +179,6 @@ export interface AgentEventNewCandidate {
   prediction: Prediction;
   briefing_preview: string;
   timestamp: string;
-  source?: "REAL_MPC_DIFF" | "SYNTHETIC_INJECTION";
   expert_review?: ExpertReview | null;
 }
 

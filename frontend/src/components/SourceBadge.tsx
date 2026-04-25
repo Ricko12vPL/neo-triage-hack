@@ -2,16 +2,16 @@ import type { DataSource } from "../api/types";
 
 /**
  * Per-object provenance pill. Renders next to the trksub in the Live
- * Feed, in the candidate-details panel header, and (small variant) on
- * the Sky View popover. Three states only — no ambiguity for jurors:
+ * Feed and the candidate-details panel header. Two states only — no
+ * ambiguity for jurors:
  *
- *   ◉ MPC LIVE   → real MPC NEOCP scrape, emerald
- *   ◆ DEMO       → handcrafted fixture, violet
- *   ⚡ SYNTHETIC → operator-triggered demo event, orange + pulse
+ *   ◉ MPC LIVE → real MPC NEOCP scrape, emerald
+ *   ◆ DEMO     → handcrafted fixture (P21YR4A YR4 analogue,
+ *                P21LOWRT DISSENT case, …), violet
  */
 const STYLE: Record<
   DataSource,
-  { bg: string; text: string; border: string; icon: string; label: string; pulse?: boolean }
+  { bg: string; text: string; border: string; icon: string; label: string }
 > = {
   LIVE_MPC_NEOCP: {
     bg: "bg-emerald-900/40",
@@ -26,14 +26,6 @@ const STYLE: Record<
     border: "border-violet-700/60",
     icon: "◆",
     label: "Demo",
-  },
-  SYNTHETIC_INJECTION: {
-    bg: "bg-orange-900/50",
-    text: "text-orange-300",
-    border: "border-orange-700/60",
-    icon: "⚡",
-    label: "Synthetic",
-    pulse: true,
   },
 };
 
@@ -65,9 +57,7 @@ export function SourceBadge({
   const tooltip =
     source === "LIVE_MPC_NEOCP"
       ? `Real MPC NEOCP tracklet${age ? ` · fetched ${age}` : ""}.`
-      : source === "DEMO_FIXTURE"
-      ? "Handcrafted demo fixture (not derived from real observations)."
-      : "Operator-triggered synthetic event for demo recording.";
+      : "Handcrafted demo fixture (not derived from real observations).";
   return (
     <span
       className={[
@@ -75,7 +65,6 @@ export function SourceBadge({
         s.bg,
         s.text,
         s.border,
-        s.pulse ? "animate-pulse" : "",
         className ?? "",
       ].join(" ")}
       title={tooltip}

@@ -9,7 +9,6 @@ import type {
 import { BriefingPanel, type BriefingHistoryEntry } from "./components/BriefingPanel";
 import { CandidateList } from "./components/CandidateList";
 import { DataSourceBadge } from "./components/DataSourceBadge";
-import { DemoInjectionMenu } from "./components/DemoInjectionMenu";
 import { ExpertReviewPanel } from "./components/ExpertReviewPanel";
 import { PredictionCard } from "./components/PredictionCard";
 import { AgentAlertBanner } from "./components/AgentAlertBanner";
@@ -308,7 +307,6 @@ export default function App() {
             connectionStatus={connectionStatus}
           />
           <DataSourceBadge />
-          <DemoInjectionMenu />
         </div>
       </header>
 

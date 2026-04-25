@@ -209,7 +209,6 @@ async def agent_loop() -> None:
                 await notifier.broadcast(
                     {
                         "type": "new_candidate",
-                        "source": "REAL_MPC_DIFF",
                         "candidate": candidate.model_dump(mode="json"),
                         "prediction": prediction.model_dump(mode="json"),
                         "briefing_preview": preview,

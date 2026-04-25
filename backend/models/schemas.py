@@ -68,16 +68,14 @@ class Candidate(BaseModel):
             "required alongside impact_probability to classify Torino severity."
         ),
     )
-    data_source: Literal[
-        "LIVE_MPC_NEOCP", "DEMO_FIXTURE", "SYNTHETIC_INJECTION"
-    ] = Field(
+    data_source: Literal["LIVE_MPC_NEOCP", "DEMO_FIXTURE"] = Field(
         default="LIVE_MPC_NEOCP",
         description=(
             "Where this Candidate originated. LIVE_MPC_NEOCP = scraped from"
             " minorplanetcenter.net/iau/NEO/neocp.txt (real). DEMO_FIXTURE ="
-            " handcrafted (e.g. P21YR4A YR4 analogue). SYNTHETIC_INJECTION ="
-            " operator-triggered demo event. The frontend renders one badge"
-            " per source so reviewers can never confuse the three streams."
+            " handcrafted (e.g. P21YR4A YR4 analogue, P21LOWRT DISSENT case)."
+            " The frontend renders one badge per source so jurors can"
+            " distinguish real tracklets from curated demo fixtures."
         ),
     )
     data_source_url: str | None = Field(

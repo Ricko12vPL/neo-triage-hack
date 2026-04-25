@@ -21,7 +21,7 @@ from backend.data.neocp_fetcher import fetch_neocp_candidates
 router = APIRouter(prefix="/api/meta", tags=["meta"])
 
 
-SourceKind = Literal["LIVE_MPC_NEOCP", "DEMO_FIXTURE", "SYNTHETIC_INJECTION"]
+SourceKind = Literal["LIVE_MPC_NEOCP", "DEMO_FIXTURE"]
 
 
 class StreamReport(BaseModel):
@@ -54,18 +54,6 @@ class DataSourceReport(BaseModel):
     live_feed_available: bool = False
     live_feed_candidate_count: int | None = None
     live_feed_sample_trksubs: list[str] = []
-
-
-# Module-level counter for synthetic injections this server uptime.
-_synthetic_count = 0
-_synthetic_last_at: datetime | None = None
-
-
-def record_synthetic_injection() -> None:
-    """Called by the synthetic-injection endpoint to bump the counter."""
-    global _synthetic_count, _synthetic_last_at
-    _synthetic_count += 1
-    _synthetic_last_at = datetime.now(UTC)
 
 
 @router.get("/data-source", response_model=DataSourceReport)
@@ -138,30 +126,8 @@ async def data_source_report() -> DataSourceReport:
         fetch_status="STATIC",
     )
 
-    # ----- Synthetic injection stream -----
-    synthetic_stream = StreamReport(
-        source="SYNTHETIC_INJECTION",
-        label="Synthetic",
-        description=(
-            "Operator-triggered synthetic events. Used during demo"
-            " recordings to fire predictable climax moments. Every event"
-            " carries source=SYNTHETIC_INJECTION on the wire and renders"
-            " an explicit ⚡ SYNTHETIC badge in the UI — never claimed as"
-            " a real MPC tracklet."
-        ),
-        url=None,
-        candidate_count=_synthetic_count,
-        last_fetched_at_utc=(
-            _synthetic_last_at.isoformat().replace("+00:00", "Z")
-            if _synthetic_last_at else None
-        ),
-        next_scheduled_fetch_at_utc=None,
-        ttl_seconds=None,
-        fetch_status="STATIC",
-    )
-
     return DataSourceReport(
-        streams=[live_stream, demo_stream, synthetic_stream],
+        streams=[live_stream, demo_stream],
         retrieved_at_utc=retrieved_at,
         notes=(
             "Famous NEO positions in Sky View + Orbit View are computed from"
@@ -173,9 +139,8 @@ async def data_source_report() -> DataSourceReport:
         # Backwards-compat scalars (older UI build still reads these):
         primary_source="hybrid",
         primary_description=(
-            "Hybrid feed: live MPC NEOCP + curated demo fixtures + optional"
-            " operator-triggered synthetic injections. Each candidate carries"
-            " a data_source field tagging its origin."
+            "Hybrid feed: live MPC NEOCP + curated demo fixtures. Each"
+            " candidate carries a data_source field tagging its origin."
         ),
         primary_count=(live_count or 0) + len(MOCK_CANDIDATES),
         live_feed_available=live_status == "OK",

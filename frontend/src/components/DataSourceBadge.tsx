@@ -3,13 +3,12 @@ import { api } from "../api/client";
 import type { DataSourceReport, StreamReport } from "../api/types";
 
 /**
- * Header transparency widget. Renders three stacked pills (or one
- * compact strip on narrow screens) so the operator can see at a
- * glance how fresh each stream is:
+ * Header transparency widget. Two stacked pills so the operator (and
+ * any reviewer) can see at a glance where the candidates come from
+ * and how fresh the live stream is:
  *
- *   ◉ MPC LIVE  · 47 · 47s ago
- *   ◆ DEMO      · 11 · static
- *   ⚡ SYNTHETIC · N · idle | last 12s ago
+ *   ◉ MPC LIVE · 47 · 47s ago
+ *   ◆ DEMO     · 11 · static
  *
  * Polls /api/meta/data-source every 10s for fresh per-stream meta.
  */
@@ -31,12 +30,11 @@ function relativeAge(iso: string | null | undefined, now: number): string | null
 const ICON: Record<StreamReport["source"], string> = {
   LIVE_MPC_NEOCP: "◉",
   DEMO_FIXTURE: "◆",
-  SYNTHETIC_INJECTION: "⚡",
 };
 
 const TONE: Record<
   StreamReport["source"],
-  { dot: string; text: string; border: string; pulse?: boolean }
+  { dot: string; text: string; border: string }
 > = {
   LIVE_MPC_NEOCP: {
     dot: "bg-emerald-400",
@@ -48,12 +46,6 @@ const TONE: Record<
     text: "text-violet-200",
     border: "border-violet-700/60",
   },
-  SYNTHETIC_INJECTION: {
-    dot: "bg-orange-400",
-    text: "text-orange-200",
-    border: "border-orange-700/60",
-    pulse: true,
-  },
 };
 
 function StreamPill({ stream, now }: { stream: StreamReport; now: number }) {
@@ -63,15 +55,10 @@ function StreamPill({ stream, now }: { stream: StreamReport; now: number }) {
     freshness = "error";
   } else if (stream.source === "DEMO_FIXTURE") {
     freshness = "static";
-  } else if (stream.source === "SYNTHETIC_INJECTION") {
-    const age = relativeAge(stream.last_fetched_at_utc, now);
-    freshness = age ? `last ${age}` : "idle";
   } else {
     const age = relativeAge(stream.last_fetched_at_utc, now);
     freshness = age ?? "—";
   }
-  const showPulse =
-    stream.source === "SYNTHETIC_INJECTION" && stream.candidate_count > 0;
   const tooltip =
     `${stream.label} — ${stream.description}` +
     (stream.url ? `\n${stream.url}` : "");
@@ -81,7 +68,6 @@ function StreamPill({ stream, now }: { stream: StreamReport; now: number }) {
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px]",
         tone.border,
         tone.text,
-        showPulse ? "animate-pulse" : "",
       ].join(" ")}
       title={tooltip}
     >

@@ -139,8 +139,8 @@ export function CandidateList({
           {(() => {
             // Counts derive purely from the candidate list — no server-side
             // count to drift from. Live = LIVE_MPC_NEOCP (or unset, default
-            // live for backwards compat), Demo = DEMO_FIXTURE, Synthetic =
-            // SYNTHETIC_INJECTION, Reviewed = has expert_review.
+            // live for backwards compat); Demo = DEMO_FIXTURE; Reviewed =
+            // has expert_review.
             const live = candidates.filter(
               (c) =>
                 !c.data_source ||
@@ -149,14 +149,10 @@ export function CandidateList({
             const demo = candidates.filter(
               (c) => c.data_source === "DEMO_FIXTURE",
             ).length;
-            const synth = candidates.filter(
-              (c) => c.data_source === "SYNTHETIC_INJECTION",
-            ).length;
             const reviewed = candidates.filter((c) => c.expert_review).length;
             const segments = [
               live > 0 ? `${live} live` : null,
               demo > 0 ? `${demo} demo` : null,
-              synth > 0 ? `${synth} synthetic` : null,
               reviewed > 0 ? `${reviewed} opus-reviewed` : null,
             ].filter(Boolean);
             return segments.length > 0
