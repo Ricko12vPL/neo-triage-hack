@@ -53,8 +53,8 @@ function Earth() {
   );
 
   useFrame((_, delta) => {
-    if (earthRef.current) earthRef.current.rotation.y += delta * 0.03;
-    if (cloudsRef.current) cloudsRef.current.rotation.y += delta * 0.045;
+    if (earthRef.current) earthRef.current.rotation.y += delta * 0.01;
+    if (cloudsRef.current) cloudsRef.current.rotation.y += delta * 0.014;
   });
 
   return (
