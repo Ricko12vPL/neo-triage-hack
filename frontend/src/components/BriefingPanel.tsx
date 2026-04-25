@@ -61,7 +61,10 @@ export function BriefingPanel({
   }, [reasoning, briefing, status]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    // Outer is a plain flex column — the parent <section> handles vertical
+    // overflow so we don't want an inner clip. min-h-0 keeps any nested
+    // streaming buffers shrink-friendly.
+    <div className="flex min-h-0 flex-col">
       {/* Streaming progress indicator */}
       <div className="relative h-px bg-zinc-800">
         {status === "streaming" && (
@@ -192,7 +195,7 @@ export function BriefingPanel({
         {reasoningOpen && (
           <div
             ref={reasoningRef}
-            className="max-h-48 overflow-y-auto px-4 pb-3 font-mono text-[12px] leading-relaxed text-zinc-400"
+            className="max-h-72 overflow-y-auto px-4 pb-3 font-mono text-[12px] leading-relaxed text-zinc-400"
           >
             {displayReasoning ? (
               <pre className="whitespace-pre-wrap">{displayReasoning}</pre>
@@ -207,10 +210,20 @@ export function BriefingPanel({
         )}
       </div>
 
-      {/* Briefing panel — main */}
+      {/* Briefing panel — main artefact: 150–250 word veteran-astronomer
+          recommendation. Renders at natural height so the parent
+          <section> can scroll the whole stack predictably. */}
+      <div className="border-b border-zinc-900 bg-zinc-950/30 px-4 py-2">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-emerald-300/80">
+          Operator briefing — what to do tonight
+        </p>
+        <p className="mt-0.5 text-[10px] text-zinc-600">
+          Veteran-astronomer voice · 150–250 words · streamed by Opus 4.7
+        </p>
+      </div>
       <div
         ref={briefingRef}
-        className="flex-1 overflow-y-auto px-6 py-5 text-[14px] leading-relaxed text-zinc-200"
+        className="px-6 py-5 text-[14px] leading-relaxed text-zinc-200"
       >
         {briefing ? (
           <Markdown text={briefing} />

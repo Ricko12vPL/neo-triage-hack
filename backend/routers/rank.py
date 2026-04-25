@@ -96,12 +96,13 @@ async def rank_candidates(
         ),
     ),
     k: int = Query(
-        default=5,
+        default=20,
         ge=1,
-        le=20,
+        le=500,
         description=(
             "Number of top rows (by P(NEO) descending) to send through the"
-            " expert reviewer when `expert=true`."
+            " expert reviewer when `expert=true`. Up to 500 — the 15-min"
+            " review cache keeps repeat refreshes essentially free."
         ),
     ),
 ) -> list[RankedCandidate]:

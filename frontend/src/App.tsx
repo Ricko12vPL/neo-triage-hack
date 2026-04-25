@@ -80,12 +80,13 @@ export default function App() {
     [events],
   );
 
-  // Load initial ranked candidates. Limit 50 covers the full live NEOCP
-  // window (typically 20–50 active tracklets) plus the curated demo set.
+  // Load initial ranked candidates. limit=200 + k=200 means every row in
+  // the merged universe (live NEOCP + demo) carries an Opus expert review
+  // on the wire. The fetcher's 15-min cache makes repeat refreshes cheap.
   useEffect(() => {
     let cancelled = false;
     api
-      .ranked(200, { expert: true, k: 20 })
+      .ranked(200, { expert: true, k: 200 })
       .then((items) => {
         if (cancelled) return;
         setCandidates(items);
@@ -107,7 +108,7 @@ export default function App() {
   useEffect(() => {
     const id = setInterval(() => {
       api
-        .ranked(200, { expert: true, k: 20 })
+        .ranked(200, { expert: true, k: 200 })
         .then(setCandidates)
         .catch(() => {});
     }, 15 * 60 * 1000);
@@ -350,9 +351,13 @@ export default function App() {
                   candidate={selectedCandidate}
                   observerLocation={observerLocation}
                 />
-                {selectedCandidate.expert_review && (
-                  <ExpertReviewPanel review={selectedCandidate.expert_review} />
-                )}
+                {/*
+                 * Order: ranker numbers → operator briefing (the headline
+                 * artefact for tonight's observation) → Opus expert review
+                 * (structured second opinion that supports / pushes back
+                 * on the ranker). Putting the briefing first answers
+                 * "what should I do tonight" before "why".
+                 */}
                 <BriefingPanel
                   reasoning={reasoning}
                   briefing={briefing}
@@ -368,6 +373,9 @@ export default function App() {
                     setStreamError(null);
                   }}
                 />
+                {selectedCandidate.expert_review && (
+                  <ExpertReviewPanel review={selectedCandidate.expert_review} />
+                )}
               </>
             ) : (
               <div className="flex h-full items-center justify-center px-6 text-sm text-zinc-500">
