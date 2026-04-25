@@ -13,6 +13,7 @@ import { TorinoBadge } from "./TorinoBadge";
 import { ExpertReviewChip } from "./ExpertReviewChip";
 import { SourceBadge } from "./SourceBadge";
 import { AstrometricQualityBadge } from "./AstrometricQualityBadge";
+import { QualityLegend } from "./QualityLegend";
 
 interface Props {
   candidates: RankedCandidate[];
@@ -162,6 +163,8 @@ export function CandidateList({
           })()}
         </p>
       </header>
+
+      <QualityLegend />
 
       <div className="border-b border-zinc-900 px-4 py-2">
         <SortControl
