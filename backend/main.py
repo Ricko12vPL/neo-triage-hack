@@ -25,6 +25,7 @@ from backend.routers import (  # noqa: E402
     candidates,
     cost,
     external,
+    imminent_impactors,
     meta,
     population_risk,
     rank,
@@ -104,6 +105,7 @@ app.include_router(candidates.router)
 app.include_router(briefing.router)
 app.include_router(cost.router)
 app.include_router(external.router)
+app.include_router(imminent_impactors.router)
 app.include_router(meta.router)
 app.include_router(population_risk.router)
 app.include_router(rank.router)

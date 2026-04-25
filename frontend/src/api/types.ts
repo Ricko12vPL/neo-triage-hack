@@ -438,3 +438,80 @@ export interface YR4Milestone {
   impact_probability: number;
   absolute_magnitude_h: number;
 }
+
+// ---------------------------------------------------------------------------
+// Imminent Impactors Library — six historically verified pre-impact predictions
+// ---------------------------------------------------------------------------
+
+export interface CorridorVertex {
+  name: string;
+  lat_deg: number;
+  lon_deg: number;
+}
+
+export interface MeteoriteRecovery {
+  name: string;
+  fragments_recovered: number;
+  total_mass_kg: number | null;
+  first_recovery_date: string;
+  first_recovery_finder: string | null;
+  search_lead: string;
+  meteorite_class: string;
+  strewn_field_lat_deg: number | null;
+  strewn_field_lon_deg: number | null;
+  strewn_field_long_axis_km: number | null;
+  strewn_field_short_axis_km: number | null;
+}
+
+export type ImminentImpactorCaseType = "CLEARED" | "IMPACTED";
+
+export interface ImminentImpactorCase {
+  designation: string;
+  designation_temporary: string | null;
+  case_number_in_history: number;
+  case_type: ImminentImpactorCaseType;
+  discovery_date_utc: string;
+  discovery_observer: string;
+  discovery_observatory: string;
+  warning_time_hours: number | null;
+  diameter_m: number;
+  diameter_uncertainty_m: number | null;
+  absolute_magnitude_h: number | null;
+  spectral_type: string | null;
+  impact_time_utc: string | null;
+  impact_lat_deg: number | null;
+  impact_lon_deg: number | null;
+  impact_uncertainty_km: number | null;
+  impact_location_name: string | null;
+  impact_velocity_km_s: number | null;
+  impact_energy_kt_tnt: number | null;
+  explosion_altitude_km: number | null;
+  meteorite_recovery: MeteoriteRecovery | null;
+  corridor_polyline: CorridorVertex[] | null;
+  estimated_population_in_corridor: number | null;
+  peak_torino_scale: number | null;
+  peak_impact_probability: number | null;
+  peak_impact_probability_date: string | null;
+  cleared_date: string | null;
+  cleared_by: string | null;
+  historical_significance: string;
+  iawn_activated: boolean;
+  smpag_activated: boolean;
+  sources: string[];
+  fetched_at_utc: string;
+}
+
+export interface ImminentImpactorsSummary {
+  designation: string;
+  case_number_in_history: number;
+  case_type: ImminentImpactorCaseType;
+  discovery_date_utc: string;
+  impact_time_utc: string | null;
+  diameter_m: number;
+  impact_lat_deg: number | null;
+  impact_lon_deg: number | null;
+  impact_location_name: string | null;
+  has_meteorite_recovery: boolean;
+  has_corridor_polyline: boolean;
+  historical_significance: string;
+}

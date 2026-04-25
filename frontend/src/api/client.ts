@@ -14,6 +14,8 @@ import type {
   CrossValidationReport,
   DataSourceReport,
   ExpertReview,
+  ImminentImpactorCase,
+  ImminentImpactorsSummary,
   ImpactCorridorEstimate,
   PopulationRiskRequest,
   PopulationRiskResponse,
@@ -84,6 +86,14 @@ export const api = {
     getJson<ImpactCorridorEstimate | null>(
       `/api/risk/corridor/${encodeURIComponent(designation)}`,
     ),
+  imminentImpactors: () =>
+    getJson<ImminentImpactorsSummary[]>("/api/imminent-impactors/"),
+  imminentImpactor: (designation: string) =>
+    getJson<ImminentImpactorCase>(
+      `/api/imminent-impactors/${encodeURIComponent(designation)}`,
+    ),
+  imminentImpactorsChronological: () =>
+    getJson<ImminentImpactorCase[]>("/api/imminent-impactors/sorted-by-date"),
   populationRisk: async (request: PopulationRiskRequest) => {
     const resp = await fetch(`${BASE}/api/risk/population-weighted`, {
       method: "POST",
