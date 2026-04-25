@@ -6,9 +6,10 @@ Every CYCLE_INTERVAL_SECONDS it:
   1. Fetches live candidates from MPC NEOCP (15-min cache; falls back to mock)
   2. Ranks each via the Bayesian GBM ranker
   3. Compares against previous-cycle state to detect new objects
-  4. Generates Opus 4.7 briefings for new top-3 (cost-capped)
-  5. Broadcasts WS events to all connected dashboards
-  6. Appends a structured entry to data/agent_log.jsonl
+  4. Runs the Opus 4.7 expert reviewer over the top-K (hybrid classifier)
+  5. Generates Opus 4.7 briefings for new top-3 (cost-capped)
+  6. Broadcasts WS events to all connected dashboards
+  7. Appends a structured entry to data/agent_log.jsonl
 
 Error resilience: any exception in a single cycle is caught, logged,
 and triggers exponential backoff (60s → 300s → 900s) before the next
@@ -20,16 +21,19 @@ import asyncio
 import contextlib
 import logging
 import time
-from datetime import UTC, datetime
+from collections import deque
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from backend.agent import logger as agent_logger
 from backend.agent import notifier
 from backend.agent.state import load_state, save_state
 from backend.data.neocp_fetcher import fetch_neocp_candidates
+from backend.models.expert_review import ExpertReview
 from backend.models.schemas import BriefingRequest, Candidate, Prediction
 from backend.services import cost_tracker
 from backend.services.briefing_engine import stream_briefing
+from backend.services.expert_classifier import get_expert_classifier
 from backend.services.ranker import get_ranker
 
 _log = logging.getLogger(__name__)
@@ -37,9 +41,33 @@ _log = logging.getLogger(__name__)
 CYCLE_INTERVAL_SECONDS = 300        # 5 minutes
 COST_CAP_USD = 25.0                 # stop Claude calls above this; loop continues
 MAX_BRIEFINGS_PER_CYCLE = 3         # cost control: max Opus calls per cycle
+EXPERT_TOP_K = 5                    # how many top-by-P(NEO) get reviewed each cycle
+EXPERT_HOURLY_COST_CAP_USD = 5.0    # hourly circuit breaker on expert review spend
 BACKOFF_STEPS_SECONDS = [60, 300, 900]  # exponential backoff on consecutive errors
 
 stop_event = asyncio.Event()
+
+
+# Sliding 1-hour window of (timestamp, cost_usd) for the expert reviewer.
+# Used by `_expert_cost_window_total_usd` to gate runs when spend gets hot.
+_expert_cost_window: deque[tuple[datetime, float]] = deque()
+
+
+def _expert_cost_window_total_usd(now: datetime | None = None) -> float:
+    """Return the total cost recorded in the last 1 hour.
+
+    Mutates the deque to evict entries older than 1 h. Idempotent for callers
+    — calling it twice in succession returns the same value (no double-evict).
+    """
+    now = now or datetime.now(UTC)
+    cutoff = now - timedelta(hours=1)
+    while _expert_cost_window and _expert_cost_window[0][0] < cutoff:
+        _expert_cost_window.popleft()
+    return sum(c for _, c in _expert_cost_window)
+
+
+def _record_expert_cost(timestamp: datetime, cost_usd: float) -> None:
+    _expert_cost_window.append((timestamp, cost_usd))
 
 
 async def _collect_briefing(
@@ -97,6 +125,62 @@ async def agent_loop() -> None:
                 (c, p) for c, p in ranked if c.trksub not in state.prev_trksubs
             ]
 
+            # ----- Expert review (Opus 4.7 hybrid classifier) -----
+            expert_reviews: dict[str, ExpertReview] = {}
+            expert_log_entries: list[dict[str, Any]] = []
+            cost_window_total = _expert_cost_window_total_usd()
+            if cost_window_total >= EXPERT_HOURLY_COST_CAP_USD:
+                _log.warning(
+                    "expert review circuit breaker open ($%.2f in last hour) — skipping",
+                    cost_window_total,
+                )
+                expert_log_entries.append(
+                    {
+                        "event": "expert_circuit_breaker_open",
+                        "hourly_cost_usd": round(cost_window_total, 4),
+                        "cap_usd": EXPERT_HOURLY_COST_CAP_USD,
+                        "timestamp_utc": cycle_ts,
+                    }
+                )
+            else:
+                top_k_pairs = ranked[:EXPERT_TOP_K]
+                if top_k_pairs:
+                    try:
+                        classifier = get_expert_classifier()
+                        reviews = await classifier.review_batch(top_k_pairs)
+                        for review in reviews:
+                            expert_reviews[review.trksub] = review
+                            if not review.cache_hit:
+                                _record_expert_cost(
+                                    review.reviewed_at_utc, review.cost_usd
+                                )
+                            expert_log_entries.append(
+                                {
+                                    "event": "expert_review_completed",
+                                    "trksub": review.trksub,
+                                    "class_endorsement": review.class_endorsement,
+                                    "endorsed_class": review.endorsed_class,
+                                    "confidence_match": review.confidence_match,
+                                    "suggested_action": review.suggested_action,
+                                    "n_caveats": len(review.caveats),
+                                    "thinking_tokens": review.thinking_tokens_used,
+                                    "cost_usd": round(review.cost_usd, 6),
+                                    "cache_hit": review.cache_hit,
+                                    "timestamp_utc": review.reviewed_at_utc.isoformat(),
+                                }
+                            )
+                    except Exception as exc:  # noqa: BLE001 — expert path is non-essential
+                        _log.warning(
+                            "expert review batch failed in cycle %d: %s", cycle, exc
+                        )
+                        expert_log_entries.append(
+                            {
+                                "event": "expert_review_error",
+                                "error": f"{type(exc).__name__}: {exc}",
+                                "timestamp_utc": cycle_ts,
+                            }
+                        )
+
             briefings_done: list[dict[str, Any]] = []
             session_cost_before = state.session_cost_usd
 
@@ -121,12 +205,16 @@ async def agent_loop() -> None:
                     }
                 )
 
+                review = expert_reviews.get(candidate.trksub)
                 await notifier.broadcast(
                     {
                         "type": "new_candidate",
                         "candidate": candidate.model_dump(mode="json"),
                         "prediction": prediction.model_dump(mode="json"),
                         "briefing_preview": preview,
+                        "expert_review": (
+                            review.model_dump(mode="json") if review else None
+                        ),
                         "timestamp": cycle_ts,
                     }
                 )
@@ -156,6 +244,7 @@ async def agent_loop() -> None:
                     "candidates_fetched_count": len(ranked),
                     "new_candidates_trksubs": [c.trksub for c, _ in new_pairs],
                     "briefings_generated": briefings_done,
+                    "expert_reviews": expert_log_entries,
                     "total_cost_this_cycle_usd": round(
                         state.session_cost_usd - session_cost_before, 6
                     ),
