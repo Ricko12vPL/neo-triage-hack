@@ -90,6 +90,8 @@ export interface ExpertReview {
   cache_hit: boolean;
 }
 
+export type AstrometricGrade = "A" | "B" | "C" | "F";
+
 export interface RankedCandidate extends Candidate {
   prediction: Prediction;
   /**
@@ -105,6 +107,11 @@ export interface RankedCandidate extends Candidate {
    * pushed by the agent loop's expert-review pass.
    */
   expert_review?: ExpertReview | null;
+  /**
+   * Find_Orb-style A/B/C/F grade indicating astrometric quality.
+   * 'A' is strong arc + many obs; 'F' is too thin to support OD.
+   */
+  astrometric_quality_grade?: AstrometricGrade;
 }
 
 export interface BriefingChunk {

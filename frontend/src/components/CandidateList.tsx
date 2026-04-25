@@ -12,6 +12,7 @@ import {
 import { TorinoBadge } from "./TorinoBadge";
 import { ExpertReviewChip } from "./ExpertReviewChip";
 import { SourceBadge } from "./SourceBadge";
+import { AstrometricQualityBadge } from "./AstrometricQualityBadge";
 
 interface Props {
   candidates: RankedCandidate[];
@@ -236,6 +237,11 @@ export function CandidateList({
                       source={c.data_source}
                       fetchedAt={c.data_source_fetched_at_utc}
                     />
+                    {c.astrometric_quality_grade && (
+                      <AstrometricQualityBadge
+                        grade={c.astrometric_quality_grade}
+                      />
+                    )}
                     {c.expert_review ? (
                       <ExpertReviewChip review={c.expert_review} />
                     ) : (

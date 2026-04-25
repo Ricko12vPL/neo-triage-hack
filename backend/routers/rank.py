@@ -22,6 +22,10 @@ from backend.data.mock_candidates import MOCK_CANDIDATES
 from backend.data.neocp_fetcher import fetch_neocp_candidates
 from backend.models.expert_review import ExpertReview
 from backend.models.schemas import Candidate, Prediction
+from backend.services.astrometric_quality import (
+    AstrometricGrade,
+    grade_astrometric_quality,
+)
 from backend.services.expert_classifier import (
     ExpertClassifier,
     get_expert_classifier,
@@ -50,6 +54,7 @@ class RankedCandidate(Candidate):
     prediction: Prediction
     is_demo: bool = False
     expert_review: ExpertReview | None = None
+    astrometric_quality_grade: AstrometricGrade = "C"
 
 
 async def _gather_universe(include_demo: bool, fetch_limit: int) -> list[Candidate]:
@@ -151,6 +156,12 @@ async def rank_candidates(
             prediction=prediction,
             is_demo=candidate.trksub in demo_trksubs,
             expert_review=expert_reviews.get(candidate.trksub),
+            astrometric_quality_grade=grade_astrometric_quality(
+                n_observations=candidate.n_observations,
+                arc_length_minutes=candidate.arc_length_minutes,
+                mean_magnitude_v=candidate.mean_magnitude_v,
+                digest2_neo_noid=candidate.digest2_neo_noid,
+            ),
         )
         for candidate, prediction in items[:limit]
     ]
