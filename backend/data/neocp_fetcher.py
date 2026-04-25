@@ -28,6 +28,11 @@ NEOCP_OBS_URL = (
 CACHE_TTL_MINUTES = 15
 _OBLIQUITY_RAD = math.radians(23.439291111)  # J2000 mean obliquity
 RATE_FALLBACK = 2.0  # arcsec/min used when obs fetch fails
+# Hard cap on per-candidate rate fetches per cycle. NEOCP normally has
+# 5–50 active tracklets; this cap keeps a pathologically large list from
+# spawning hundreds of concurrent CGI hits against the MPC observation
+# server. Entries beyond the cap fall back to RATE_FALLBACK + "???" obs.
+MAX_RATE_FETCHES = 80
 
 
 _cache: list[Candidate] = []
@@ -181,11 +186,33 @@ async def _fetch_rate_and_code(
 # Main entry point
 # ---------------------------------------------------------------------------
 
+def _build_candidate(data: dict[str, Any], rate: float, obs_code: str) -> Candidate:
+    return Candidate(
+        trksub=data["trksub"],
+        ra_deg=data["ra_deg"],
+        dec_deg=data["dec_deg"],
+        mean_magnitude_v=data["mean_magnitude_v"],
+        rate_arcsec_min=rate,
+        observatory_code=obs_code,
+        first_obs_datetime=data["first_obs_datetime"],
+        n_observations=data["n_observations"],
+        arc_length_minutes=data["arc_length_minutes"],
+        digest2_neo_noid=data["digest2_neo_noid"],
+        ecliptic_latitude_deg=data["ecliptic_latitude_deg"],
+    )
+
+
 async def fetch_neocp_candidates(limit: int = 20) -> list[Candidate]:
     """Return up to `limit` live NEOCP candidates, sorted by digest2 score desc.
 
-    Results are cached for CACHE_TTL_MINUTES. Falls back to MOCK_CANDIDATES
-    if the MPC is unreachable or returns malformed data.
+    The internal cache always holds the **full** parsed NEOCP list — `limit`
+    only slices the view returned to the caller. This way a low-`limit`
+    caller (e.g. the agent loop fetching 20) cannot starve a higher-`limit`
+    caller (e.g. /api/rank/?limit=100) of rows that already exist on the
+    NEOCP. Cache TTL is CACHE_TTL_MINUTES.
+
+    Falls back to MOCK_CANDIDATES if the MPC is unreachable or returns
+    malformed data.
     """
     global _cache, _cache_at
 
@@ -201,38 +228,29 @@ async def fetch_neocp_candidates(limit: int = 20) -> list[Candidate]:
             raw = [_parse_neocp_line(ln) for ln in resp.text.strip().splitlines()]
             parsed = [r for r in raw if r is not None]
 
-            # Sort by score desc; take top `limit` for rate fetching
+            # Sort by digest2 score desc so the highest-quality candidates
+            # are at the top of the cached list and `parsed[:limit]` always
+            # returns the most interesting rows.
             parsed.sort(key=lambda x: x["digest2_neo_noid"], reverse=True)
-            top = parsed[:limit]
 
-            # Concurrently fetch rates + observatory codes
-            tasks = [_fetch_rate_and_code(client, p["trksub"]) for p in top]
+            # Fetch rates concurrently for up to MAX_RATE_FETCHES entries.
+            # Anything beyond that bound gets RATE_FALLBACK + "???" obs.
+            rate_targets = parsed[:MAX_RATE_FETCHES]
+            tasks = [_fetch_rate_and_code(client, p["trksub"]) for p in rate_targets]
             results: list[tuple[float, str] | BaseException] = list(
                 await asyncio.gather(*tasks, return_exceptions=True)
             )
 
             candidates: list[Candidate] = []
-            for data, result in zip(top, results, strict=True):
+            for data, result in zip(rate_targets, results, strict=True):
                 if isinstance(result, BaseException):
                     rate, obs_code = RATE_FALLBACK, "???"
                 else:
                     rate, obs_code = result
+                candidates.append(_build_candidate(data, rate, obs_code))
 
-                candidates.append(
-                    Candidate(
-                        trksub=data["trksub"],
-                        ra_deg=data["ra_deg"],
-                        dec_deg=data["dec_deg"],
-                        mean_magnitude_v=data["mean_magnitude_v"],
-                        rate_arcsec_min=rate,
-                        observatory_code=obs_code,
-                        first_obs_datetime=data["first_obs_datetime"],
-                        n_observations=data["n_observations"],
-                        arc_length_minutes=data["arc_length_minutes"],
-                        digest2_neo_noid=data["digest2_neo_noid"],
-                        ecliptic_latitude_deg=data["ecliptic_latitude_deg"],
-                    )
-                )
+            for data in parsed[MAX_RATE_FETCHES:]:
+                candidates.append(_build_candidate(data, RATE_FALLBACK, "???"))
 
         _cache = candidates
         _cache_at = now

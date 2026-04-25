@@ -50,6 +50,13 @@ export interface Prediction {
 
 export interface RankedCandidate extends Candidate {
   prediction: Prediction;
+  /**
+   * True when the row is a curated demo fixture (`MOCK_CANDIDATES`
+   * server-side) rather than a live NEOCP tracklet. Surfaced in the
+   * Live Feed as a "DEMO" badge so the user can tell narrative anchors
+   * apart from real submissions at a glance.
+   */
+  is_demo?: boolean;
 }
 
 export interface BriefingChunk {

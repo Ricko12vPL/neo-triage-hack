@@ -132,7 +132,13 @@ export function CandidateList({
           NEOCP Candidates
         </h2>
         <p className="mt-0.5 text-[11px] text-zinc-600">
-          {candidates.length} objects · click to brief
+          {(() => {
+            const live = candidates.filter((c) => !c.is_demo).length;
+            const demo = candidates.length - live;
+            return demo > 0
+              ? `${live} live · ${demo} demo · click to brief`
+              : `${candidates.length} objects · click to brief`;
+          })()}
         </p>
       </header>
 
@@ -191,6 +197,14 @@ export function CandidateList({
                         absolute_magnitude_h={c.absolute_magnitude_h}
                         variant="inline"
                       />
+                      {c.is_demo && (
+                        <span
+                          className="rounded-sm border border-violet-700/60 bg-violet-950/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-300"
+                          title="Curated demo fixture (P21YR4A YR4 analogue and friends) — kept alongside the live NEOCP feed so the briefing demo always has a hazardous anchor"
+                        >
+                          DEMO
+                        </span>
+                      )}
                       <span
                         className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classBadgeColor(
                           c.prediction.map_class,

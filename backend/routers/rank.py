@@ -29,9 +29,16 @@ _log = logging.getLogger(__name__)
 
 
 class RankedCandidate(Candidate):
-    """Candidate + its Prediction — the wire shape for /api/rank."""
+    """Candidate + its Prediction — the wire shape for /api/rank.
+
+    `is_demo` flags rows that come from the curated demo set
+    (`MOCK_CANDIDATES`) rather than the live NEOCP feed. Frontend uses
+    it to render a small "DEMO" badge so reviewers can tell at a glance
+    which rows are historical narrative anchors vs. live tracklets.
+    """
 
     prediction: Prediction
+    is_demo: bool = False
 
 
 async def _gather_universe(include_demo: bool, fetch_limit: int) -> list[Candidate]:
@@ -64,7 +71,7 @@ async def _gather_universe(include_demo: bool, fetch_limit: int) -> list[Candida
 
 @router.get("/", response_model=list[RankedCandidate])
 async def rank_candidates(
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=200, ge=1, le=500),
     include_demo: bool = Query(
         default=True,
         description="Include curated demo candidates (e.g. P21YR4A YR4 analogue)",
@@ -72,12 +79,14 @@ async def rank_candidates(
 ) -> list[RankedCandidate]:
     """Rank live NEOCP + demo candidates by P(NEO) descending.
 
-    The fetch and the response share the same `limit` cap so a request
-    for 50 results gets up to 50 live NEOCP tracklets plus the demo set
-    on top, all ranked together.
+    Default `limit=200` is intentionally well above the typical NEOCP
+    population (5–50 tracklets) so the Live Feed surfaces every reported
+    object. The fetcher caches the full parsed NEOCP list, so a single
+    high-`limit` call won't exhaust the source.
     """
     ranker = get_ranker()
     universe = await _gather_universe(include_demo=include_demo, fetch_limit=limit)
+    demo_trksubs = {c.trksub for c in MOCK_CANDIDATES}
 
     items: list[tuple[Candidate, Prediction]] = []
     for candidate in universe:
@@ -97,6 +106,7 @@ async def rank_candidates(
         RankedCandidate(
             **candidate.model_dump(),
             prediction=prediction,
+            is_demo=candidate.trksub in demo_trksubs,
         )
         for candidate, prediction in items[:limit]
     ]
