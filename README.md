@@ -8,6 +8,8 @@
 - **Backend:** https://neo-triage-backend-production.up.railway.app
 - **Source:** https://github.com/Ricko12vPL/neo-triage-hack
 
+> **Scope statement.** neo-triage is a **triage layer** designed to handle the Rubin/LSST data flood. It is **not** a replacement for [NASA JPL CNEOS Sentry-II](https://cneos.jpl.nasa.gov/sentry/) or [ESA NEOCC Aegis](https://neo.ssa.esa.int/) — it complements them by ranking the submission queue and cross-validating against their published verdicts. Every external datum is tagged with provenance (`LIVE_MPC_NEOCP`, `JPL_CNEOS_SENTRY_II`, `ESA_NEOCC_AEGIS_V5`, `JPL_CNEOS_CAD`, `DEMO_FIXTURE`). Synthetic components (population grid, hypothetical impact corridor) are clearly labeled in the UI. Production-grade roadmap: [`docs/production-readiness-roadmap.md`](docs/production-readiness-roadmap.md).
+
 ![Sky View hero](docs/demo-assets/2026-04-25-features/sky-view-hero.png)
 *Sky View — Triage-Focus filter shows the 50/57 tracklets that need a decision tonight. Famous-NEO context layer (Bennu, Apophis, …) propagated from JPL Horizons elements at current epoch and verified <0.25° vs JPL OBSERVER. P21YR4A pulses red (Torino 3 hazard); halo rings around each marker encode the Opus 4.7 expert verdict (CONCUR / PARTIAL / DISSENT). Right pane: full Torino-Scale enrichment + kinetic-energy estimate + composition prior.*
 

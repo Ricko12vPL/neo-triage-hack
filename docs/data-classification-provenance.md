@@ -271,3 +271,51 @@ Reports:
 *Last verified 2026-04-25 against production at
 `https://neo-triage-hack.vercel.app` and
 `https://neo-triage-backend-production.up.railway.app`.*
+
+---
+
+## §8. Cross-validation against production planetary defense systems
+
+Three independent production data sources are integrated for cross-
+validation on famous-NEO panels (and, in the future, on high-stakes
+ranked tracklets):
+
+| System              | Endpoint                                          | Cache TTL | Used in              |
+| ------------------- | ------------------------------------------------- | --------- | -------------------- |
+| NASA JPL Sentry-II  | https://ssd-api.jpl.nasa.gov/sentry.api           | 6 h       | CrossValidationPanel |
+| ESA NEOCC Aegis v5  | https://neo.ssa.esa.int/PSDB-portlet/download…   | 12 h      | CrossValidationPanel |
+| NASA JPL CAD        | https://ssd-api.jpl.nasa.gov/cad.api              | 24 h      | CloseApproachTimeline|
+
+**Triangulation principle.** Production planetary defense requires ≥2
+independent orbit-determination systems to agree before an operator
+acts on a high-stakes verdict. neo-triage's `CrossValidationPanel`
+makes this explicit:
+
+- ✓ **Convergence** — Sentry-II + Aegis agree on presence/absence in
+  their risk lists, and (when both present) cumulative IPs agree
+  within an order of magnitude.
+- ⚠ **Divergence** — one system flags a designation as risky while the
+  other does not, OR cumulative IPs differ by more than 10×. The panel
+  surfaces the disagreement for operator review.
+
+**Honest disclosure of "absent" data.** Apophis (99942) is no longer in
+the JPL Sentry-II risk list — it was removed on 2021-02-21 after radar
+refinement reduced the post-2068 impact probability below the Sentry
+inclusion threshold. neo-triage shows this status directly: "Removed
+from JPL Sentry-II 2021-02 after orbit refinement." That is the system
+working correctly, not a data gap.
+
+**Synthetic / demo-grade components — clearly labeled in UI:**
+
+| Component               | What is real                       | What is demo-grade                                                  |
+| ----------------------- | ---------------------------------- | ------------------------------------------------------------------- |
+| `population_grid.py`    | Top-50 metro coords (Wikipedia)    | 1° density approximation (Phase 2 = CIESIN GPWv4 raster)            |
+| `ImpactCorridor2D`      | YR4 corridor shape from ESA pub.   | Geometric ellipse, not a Find_Orb b-plane Monte Carlo               |
+| `impact_damage_model.py`| Collins et al. 2017 5-psi scaling  | Casualty fraction = 50 % midpoint (Glasstone & Dolan 1977 range)     |
+
+These are banner-labeled in every UI render that uses them.
+
+**API etiquette.** Every external request carries a User-Agent
+identifying the project. The JPL Sentry and CAD clients hold a process-
+wide `asyncio.Semaphore(1)` so neo-triage honours JPL fair-use's
+"1 concurrent request" guidance.

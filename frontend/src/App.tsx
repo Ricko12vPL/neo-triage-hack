@@ -259,6 +259,16 @@ export default function App() {
           <p className="mt-0.5 text-[11px] text-zinc-500">
             Bayesian NEO follow-up · Claude Opus 4.7 reasoning
           </p>
+          <p
+            className="mt-1 max-w-[28rem] text-[10px] leading-relaxed text-zinc-600"
+            title="See docs/production-readiness-roadmap.md and docs/data-classification-provenance.md §8"
+          >
+            Triage layer · cross-validates against{" "}
+            <span className="text-zinc-400">JPL Sentry-II</span>,{" "}
+            <span className="text-zinc-400">ESA Aegis v5</span>,{" "}
+            <span className="text-zinc-400">JPL CAD</span>. Not a replacement for production
+            planetary defense systems.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
