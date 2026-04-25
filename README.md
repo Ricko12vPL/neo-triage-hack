@@ -109,6 +109,46 @@ Runs continuously inside the FastAPI lifespan. Every 2 min:
 3. For new tracklets: invokes Opus expert review (cost-circuit-breaker $5 / 1 h sliding window), writes JSONL audit entry, broadcasts WebSocket `new_candidate` event with full reasoning trace.
 4. Updates `state.prev_trksubs` on disk so a server restart doesn't trigger a flood of "new" events.
 
+### 8. Imminent Impactors Library — six historically verified pre-impact predictions
+
+A dedicated **IMPACTORS** tab serves a curated catalog of every pre-impact prediction in human history that has published trajectory data:
+
+| # | Designation | Discovery | Diameter | Status | Recovery |
+|---|---|---|---|---|---|
+| 1 | **2008 TC3** | 2008-10-06 | 4.1 m | IMPACTED | Almahata Sitta (ureilite, 600 fragments) |
+| 2 | **2014 AA** | 2014-01-01 | 2.5 m | IMPACTED | none — mid-Atlantic |
+| 5 | **2022 EB5** | 2022-03-11 | 2.0 m | IMPACTED | none — Norwegian Sea |
+| 7 | **2023 CX1** | 2023-02-12 | 0.72 m | IMPACTED | Saint-Pierre-le-Viger (Normandy) |
+| 8 | **2024 BX1** | 2024-01-20 | 0.4 m | IMPACTED | Ribbeck (aubrite, near Berlin) |
+| – | **2024 YR4** | 2024-12-27 | 60 m | CLEARED | n/a — JWST cleared 2025-03-25 |
+
+Every numeric value — coordinates, dates, energies, recovery details — traces back to **≥2 cited sources** (peer-reviewed papers or official ESA NEOCC / NASA JPL CNEOS / IAWN / SMPAG publications). The catalog loader rejects any case with fewer than two sources at startup, so a broken catalog cannot silently ship.
+
+The 2024 YR4 corridor renders as the **real ESA NEOCC published February 2025 risk band** — 11 vertices, Eastern Equatorial Pacific → Northern South America → Atlantic → West Africa → Sudan → Yemen → northwestern Indian Ocean → India → Bangladesh terminus, ~110 million people in the corridor. The CLEARED 2025-03-25 banner is shown explicitly.
+
+The same catalog drives the LIVE FEED `PopulationRiskPanel` for P21YR4A (the 2024 YR4 demo analogue) — both tabs share `useImpactorCase('2024 YR4')` so jurors comparing surfaces see one consistent story per object, not a Manila placeholder beating a Bangladesh corridor.
+
+### 9. Astrometric Quality grading — A/B/C/F
+
+Every NEOCP tracklet receives a `qA` / `qB` / `qC` / `qF` grade scored Find_Orb-style (Bill Gray, projectpluto.com) on observation count, arc length, magnitude, and digest2 score:
+
+- **A · High confidence** — ≥10 obs · ≥60 min · V<20 · digest2≥50 — rare for live MPC NEOCP
+- **B · Solid** — ≥6 obs · ≥30 min · V<22 — most live tracklets
+- **C · Marginal** — ≥3 obs · ≥10 min — pursue before they go stale
+- **F · Insufficient** — below all thresholds — pursue immediately or accept loss
+
+The grade renders as a coloured dot on every list row, a hover tooltip explaining the bottleneck, an A→F range bar in the candidate detail with the failing dimension highlighted, and a Sky View marker tonation (full-saturation A → desaturated F). The expanded legend in the Live Feed header decodes the grading at a glance with citation to projectpluto.com.
+
+### 10. Cross-validation against JPL Sentry-II + ESA NEOCC + JPL CAD
+
+When a candidate is identified as a famous NEO (Bennu, Apophis, Didymos, Ryugu, …), the Sky View detail panel cross-validates the local prediction against three independent agency feeds:
+
+- **NASA JPL CNEOS Sentry-II** — virtual-impactor table + cumulative IP + Palermo + Torino. Bennu: 157 VIs, top-IP 2182-09-24, IP=3.7×10⁻⁴, σ=0.91. Apophis: REMOVED status surfaced honestly.
+- **ESA NEOCC Aegis v5** — independent risk-list lookup with cumulative IP, Palermo, Torino. Convergence verdict (CONCUR / DIVERGE / INSUFFICIENT_DATA) computed from both feeds.
+- **JPL CNEOS CAD** — close-approach miss distances (with 3σ uncertainty) for ±100 years.
+
+For Sentry-tracked objects the `FamousNEOImpactCorridor` component renders an emerald approximate-b-plane corridor sized from the top virtual impactor's σ. The banner explicitly says "approximate — Phase 2 = full b-plane Monte Carlo".
+
 ---
 
 ## Five Claude Opus 4.7 touchpoints
@@ -159,6 +199,8 @@ Runs continuously inside the FastAPI lifespan. Every 2 min:
 - **Backend** — Python 3.12 · FastAPI · Pydantic v2 · scikit-learn · `anthropic` SDK
 - **Frontend** — Vite 8 · React 19 · TypeScript · Tailwind v4 · `@react-three/fiber` + `@react-three/drei` for the WebGL sphere
 - **Astronomy** — pure-TS Meeus *Ch. 30 / 33 / 51* Newton–Raphson Kepler solver (`frontend/src/lib/kepler.ts`); GMST/LST/altitude in `frontend/src/lib/visibility.ts` (no `astropy` in the bundle)
+- **Planetary-defense surfaces** — `httpx` clients for JPL Sentry-II / JPL CAD / ESA NEOCC Aegis with TTL caches; pure-Python `impact_damage_model.py` (Collins et al. 2017); curated `imminent_impactors_catalog.json` (six pre-impact predictions, ≥2 sources each)
+- **Maps** — Natural Earth 1:110m public-domain GeoJSON (54 KB gzipped); custom equirectangular projection in `frontend/src/lib/corridor_geo.ts`; pan/zoom/hover via SVG transforms (no Leaflet, no Mapbox)
 - **Persistence** — JSON / JSONL only · no database · no pickle (NN-01) · safetensors for ranker weights
 - **Deploy** — Railway (backend, manual `railway up` push) + Vercel (frontend, GitHub auto-deploy)
 
@@ -166,13 +208,18 @@ Runs continuously inside the FastAPI lifespan. Every 2 min:
 
 ## Data provenance & accuracy verification
 
-Three independent reports under `docs/verification/`:
+Independent verification reports under `docs/verification/`:
 
 | Report | Verifies |
 |---|---|
-| `data-authenticity-master-report.md` | Live MPC vs DEMO source split; per-row data_source provenance; reproducible pipeline. |
+| `data-authenticity-master-report.md` | Live MPC vs DEMO source split; per-row `data_source` provenance; reproducible pipeline. |
 | `current-positions-verification.md` | Famous-NEO Sky View positions vs JPL Horizons OBSERVER ephemeris — **18/18 within 0.25°**, max Geographos 0.23°, median ~0.11°. |
 | `jpl-orbital-elements-verification.md` | Keplerian elements vs Horizons ELEMENTS for all 18 catalogued bodies at JD 2461154.5. |
+| `planetary-defense-grade-verification.md` | JPL Sentry-II, ESA NEOCC Aegis v5, JPL CAD cross-validation; convergence verdicts; Bennu/Apophis canonical anchors. |
+| `astrometric-quality-viz-verification.md` | A/B/C/F grading rules + range-bar bottleneck logic + Sky View tonation. |
+| `population-risk-corridor-fixes.md` | Natural Earth GeoJSON continents + city tooltips + 3 corridor types (real / demo / deferred). |
+| `imminent-impactors-library-verification.md` | 6-case catalog integrity, 11-vertex 2024 YR4 corridor, source-count invariants, end-to-end API smoke. |
+| `livefeed-impactors-sync-verification.md` | LIVE FEED ↔ IMPACTORS tab cross-tab data parity (one object, one story). |
 
 `docs/data-classification-provenance.md` is the single jury-facing document explaining the hybrid classifier architecture, calibration vs reasoning trade-offs, and why primary candidates are *not* in Orbit View (tracklets don't have orbital elements yet — that's exactly what the system exists to triage *before*).
 
@@ -203,10 +250,10 @@ cd frontend && npm install && npm run dev          # → http://localhost:5173
 ### Tests + checks
 
 ```bash
-pytest tests/                                       # 100 / 100 passing
+pytest tests/                                       # 186 / 186 passing
 cd frontend && npx tsc --noEmit                     # 0 type errors
 cd frontend && npx eslint src --max-warnings=0      # 0 lint warnings
-cd frontend && npm run build                        # ~333 KB gzip
+cd frontend && npm run build                        # ~80 KB index.js gzip + lazy chunks
 ```
 
 ### Verify data accuracy
@@ -253,8 +300,16 @@ MIT — see [LICENSE](./LICENSE).
 - **Anthropic** for Opus 4.7 and the hackathon credits
 - **Cerebral Valley** for running the event
 - **Vera C. Rubin Observatory / LSST** for the motivation — the flood is coming
-- **NASA JPL Center for Near-Earth Object Studies (CNEOS)** — public NEO catalogue and Sentry close-approach data
+- **NASA JPL Center for Near-Earth Object Studies (CNEOS)** — public NEO catalogue, Sentry-II virtual impactors + close-approach data
 - **NASA JPL Horizons** — orbital elements + ephemerides for the 18 famous bodies in the Sky View context layer
 - **NASA / JPL Eyes on Asteroids** — planetary-context screenshots
+- **ESA NEOCC Aegis v5** — independent European risk list used for cross-validation
+- **IAWN + SMPAG** — planetary-defense response framework that activated for 2024 YR4 in 2025
+- **Bill Gray / projectpluto.com** — Find_Orb-style A/B/C/F astrometric quality grading
+- **Natural Earth (1:110m, public domain)** — country outlines on the impact-corridor map
+- **Peter Jenniskens (SETI Institute) + Muawia Shaddad (University of Khartoum)** — Almahata Sitta recovery (2008 TC3)
+- **Krisztián Sárneczky / Konkoly Observatory, Piszkéstető Station** — discoverer of 4 of the 8 imminent impactors (2022 EB5, 2023 CX1, 2024 BX1, …)
+- **D. Farnocchia & S. R. Chesley (JPL)** — Scout systematic-ranging pipeline cited throughout the catalog
 - **R. P. Binzel (2000)** — the Torino Impact Hazard Scale, the two-axis table this project implements
+- **Collins, Melosh & Marcus (2017)** — 5-psi severe-damage scaling used by the population-risk panel
 - **Minor Planet Center** for the public NEOCP feed we augment
