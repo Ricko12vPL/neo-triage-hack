@@ -174,23 +174,26 @@ export function PopulationRiskPanel({ candidate }: Props) {
               <Headline
                 label="Damage zone"
                 value={`${risk.severe_damage_radius_km.toFixed(1)} km`}
-                sub={`${risk.energy_megatons_tnt.toFixed(1)} MT TNT`}
+                context="diameter"
+                caveat={`${risk.energy_megatons_tnt.toFixed(1)} MT TNT`}
                 tone="amber"
               />
               <Headline
                 label="Population in zone"
                 value={formatPopulation(risk.population_in_zone)}
-                sub={
+                context={
                   risk.cities_in_zone.length > 0
                     ? risk.cities_in_zone[0]
                     : "rural / oceanic"
                 }
-                tone="orange"
+                caveat="representative"
+                tone="slate"
               />
               <Headline
                 label="Expected casualties"
                 value={formatCasualties(risk.expected_casualties_unconditional)}
-                sub={`@ P(impact)=${risk.impact_probability.toExponential(2)}`}
+                context={`@ P=${risk.impact_probability.toExponential(2)}`}
+                caveat="weighted by IP"
                 tone="red"
               />
             </div>
@@ -237,23 +240,38 @@ export function PopulationRiskPanel({ candidate }: Props) {
 function Headline({
   label,
   value,
-  sub,
+  context,
+  caveat,
   tone,
 }: {
   label: string;
   value: string;
-  sub: string;
-  tone: "amber" | "orange" | "red";
+  context: string;
+  caveat: string;
+  tone: "amber" | "slate" | "red";
 }) {
   const text =
-    tone === "red" ? "text-red-300" : tone === "orange" ? "text-orange-300" : "text-amber-300";
+    tone === "red"
+      ? "text-rose-300"
+      : tone === "amber"
+        ? "text-amber-300"
+        : "text-zinc-100";
+  const ring =
+    tone === "red"
+      ? "border-rose-900/50"
+      : tone === "amber"
+        ? "border-amber-900/50"
+        : "border-zinc-800";
   return (
-    <div className="rounded border border-zinc-800 bg-black/40 px-2.5 py-2">
-      <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+    <div className={`rounded border ${ring} bg-black/40 px-2.5 py-2`}>
+      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">
         {label}
       </p>
-      <p className={`mt-0.5 font-mono text-[18px] font-semibold ${text}`}>{value}</p>
-      <p className="font-mono text-[9px] text-zinc-500">{sub}</p>
+      <p className={`mt-1 font-mono text-[22px] font-bold leading-none ${text}`}>
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] text-zinc-300">{context}</p>
+      <p className="font-mono text-[9px] italic text-zinc-500">{caveat}</p>
     </div>
   );
 }
