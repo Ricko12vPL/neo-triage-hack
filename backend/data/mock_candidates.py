@@ -167,4 +167,32 @@ MOCK_CANDIDATES: list[Candidate] = [
         impact_probability=0.024,
         absolute_magnitude_h=24.0,
     ),
+    # --- Hybrid-classifier disagreement fixture (Opus DISSENT demo) -----
+    # Crafted so the Bayesian ranker (rate/mag/digest2/ecliptic-latitude
+    # only) and the Opus 4.7 expert reviewer disagree. The ranker sees a
+    # near-ecliptic, slow object with a non-trivial digest2 score and
+    # under-weights it; Opus reasons about the rate–magnitude geometry
+    # ("V=18.4 + 0.18 ″/min near opposition implies geocentric distance
+    # ~5–6 AU, consistent with a Hilda/Trojan, not a NEO or active comet")
+    # and DISSENTs with multiple structured caveats and a
+    # `request_second_epoch` / `deprioritize` action. Reliable hybrid
+    # demo climax for Most Creative Opus 4.7.
+    #
+    # Verified live 2026-04-25 against claude-opus-4-7: returned
+    # class_endorsement=DISSENT, endorsed_class=MBA, 4 caveats including
+    # CRITICAL MAGNITUDE_RATE_MISMATCH.
+    Candidate(
+        trksub="P21LOWRT",
+        ra_deg=187.452,
+        dec_deg=-3.218,
+        mean_magnitude_v=18.4,
+        rate_arcsec_min=0.18,
+        observatory_code="G96",
+        first_obs_datetime=_utc(2026, 4, 21, 23, 17),
+        n_observations=5,
+        arc_length_minutes=42.0,
+        digest2_neo_noid=68,
+        ecliptic_latitude_deg=-1.8,
+        absolute_magnitude_h=20.5,
+    ),
 ]

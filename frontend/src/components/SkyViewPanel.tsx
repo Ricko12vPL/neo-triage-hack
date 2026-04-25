@@ -436,6 +436,57 @@ function useEnterAnimation() {
   return mountTime;
 }
 
+/**
+ * Halo ring on top of the candidate marker that signals the Opus 4.7
+ * expert reviewer's verdict at a glance.
+ *  - CONCUR        → subtle green ring (static, low opacity).
+ *  - PARTIAL_CONCUR→ static amber ring.
+ *  - DISSENT       → pulsing purple ring (1 Hz sin oscillation 0.7→1.0)
+ *                    so the eye is drawn to where the expert and the
+ *                    ranker disagree — that's where operator attention
+ *                    is most needed.
+ */
+function ExpertReviewGlow({
+  endorsement,
+  radius,
+}: {
+  endorsement: "CONCUR" | "PARTIAL_CONCUR" | "DISSENT";
+  radius: number;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const colorHex =
+    endorsement === "DISSENT"
+      ? "#a855f7"
+      : endorsement === "PARTIAL_CONCUR"
+        ? "#fbbf24"
+        : "#10b981";
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return;
+    const material = meshRef.current.material as THREE.MeshBasicMaterial;
+    if (endorsement === "DISSENT") {
+      const t = clock.elapsedTime * 2 * Math.PI; // 1 Hz
+      material.opacity = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t));
+    } else if (endorsement === "PARTIAL_CONCUR") {
+      material.opacity = 0.5;
+    } else {
+      material.opacity = 0.4;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef}>
+      <torusGeometry args={[radius, radius * 0.05, 8, 32]} />
+      <meshBasicMaterial
+        color={colorHex}
+        transparent
+        opacity={0.4}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
 function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
@@ -558,6 +609,12 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
               depthWrite={false}
             />
           </mesh>
+        )}
+        {candidate.expert_review && (
+          <ExpertReviewGlow
+            endorsement={candidate.expert_review.class_endorsement}
+            radius={size * 2.6}
+          />
         )}
         {showLabel && (
           <Html

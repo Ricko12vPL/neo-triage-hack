@@ -10,6 +10,7 @@ import {
   type VisibilityResult,
 } from "../lib/visibility";
 import { TorinoBadge } from "./TorinoBadge";
+import { ExpertReviewChip } from "./ExpertReviewChip";
 
 interface Props {
   candidates: RankedCandidate[];
@@ -204,6 +205,9 @@ export function CandidateList({
                         >
                           DEMO
                         </span>
+                      )}
+                      {c.expert_review && (
+                        <ExpertReviewChip review={c.expert_review} />
                       )}
                       <span
                         className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classBadgeColor(

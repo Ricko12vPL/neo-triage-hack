@@ -5,6 +5,7 @@ import {
 } from "../lib/energetics";
 import { computeTorinoFromCandidate } from "../lib/torino";
 import { TorinoBadge } from "./TorinoBadge";
+import { ExpertReviewPanel } from "./ExpertReviewPanel";
 import { computeMotionEnvelope, hashTrksub } from "../lib/proper_motion";
 
 interface Props {
@@ -404,6 +405,10 @@ export function CandidateDetailsPanel({
             value={candidate.n_observations.toString()}
           />
         </Section>
+
+        {candidate.expert_review && (
+          <ExpertReviewPanel review={candidate.expert_review} />
+        )}
       </div>
 
       <footer className="border-t border-zinc-800 bg-zinc-950/80 px-4 py-3">

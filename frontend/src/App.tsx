@@ -66,7 +66,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     api
-      .ranked(200)
+      .ranked(200, { expert: true, k: 5 })
       .then((items) => {
         if (cancelled) return;
         setCandidates(items);
@@ -88,7 +88,7 @@ export default function App() {
   useEffect(() => {
     const id = setInterval(() => {
       api
-        .ranked(200)
+        .ranked(200, { expert: true, k: 5 })
         .then(setCandidates)
         .catch(() => {});
     }, 15 * 60 * 1000);

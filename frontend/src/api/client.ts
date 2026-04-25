@@ -10,6 +10,7 @@ import type {
   Candidate,
   CostSummary,
   DataSourceReport,
+  ExpertReview,
   Prediction,
   RankedCandidate,
   YR4Milestone,
@@ -33,10 +34,18 @@ export const api = {
     getJson<Candidate[]>(`/api/candidates/?limit=${limit}`),
   candidate: (trksub: string) =>
     getJson<Candidate>(`/api/candidates/${encodeURIComponent(trksub)}`),
-  ranked: (limit = 10) =>
-    getJson<RankedCandidate[]>(`/api/rank/?limit=${limit}`),
+  ranked: (limit = 10, opts: { expert?: boolean; k?: number } = {}) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (opts.expert) params.set("expert", "true");
+    if (opts.k) params.set("k", String(opts.k));
+    return getJson<RankedCandidate[]>(`/api/rank/?${params.toString()}`);
+  },
   rank: (trksub: string) =>
     getJson<Prediction>(`/api/rank/${encodeURIComponent(trksub)}`),
+  expertReview: (trksub: string) =>
+    getJson<ExpertReview>(
+      `/api/rank/expert-review/${encodeURIComponent(trksub)}`,
+    ),
   cost: () => getJson<CostSummary>("/api/cost/"),
   agentStatus: () => getJson<AgentStatus>("/api/agent/status"),
   dataSource: () => getJson<DataSourceReport>("/api/meta/data-source"),

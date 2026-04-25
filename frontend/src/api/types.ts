@@ -48,6 +48,44 @@ export interface Prediction {
   model_version: string;
 }
 
+export type ClassEndorsement = "CONCUR" | "DISSENT" | "PARTIAL_CONCUR";
+export type EndorsedClass =
+  | "NEO"
+  | "MBA"
+  | "COMET"
+  | "ARTIFACT"
+  | "UNCONFIRMED";
+export type ConfidenceMatch = "HIGH" | "MEDIUM" | "LOW";
+export type SuggestedAction =
+  | "follow_up_immediately"
+  | "queue_normal"
+  | "request_second_epoch"
+  | "deprioritize"
+  | "monitor";
+export type CaveatSeverity = "INFO" | "WARN" | "CRITICAL";
+
+export interface ExpertCaveat {
+  severity: CaveatSeverity;
+  code: string;
+  explanation: string;
+}
+
+export interface ExpertReview {
+  trksub: string;
+  reviewed_at_utc: string;
+  model: string;
+  class_endorsement: ClassEndorsement;
+  endorsed_class: EndorsedClass;
+  confidence_match: ConfidenceMatch;
+  reasoning_trace: string;
+  caveats: ExpertCaveat[];
+  suggested_action: SuggestedAction;
+  thinking_tokens_used: number;
+  output_tokens_used: number;
+  cost_usd: number;
+  cache_hit: boolean;
+}
+
 export interface RankedCandidate extends Candidate {
   prediction: Prediction;
   /**
@@ -57,6 +95,12 @@ export interface RankedCandidate extends Candidate {
    * apart from real submissions at a glance.
    */
   is_demo?: boolean;
+  /**
+   * Opus 4.7 hybrid-classifier second opinion. Populated only on the
+   * top-K rows when the caller requests `?expert=true`, and on rows
+   * pushed by the agent loop's expert-review pass.
+   */
+  expert_review?: ExpertReview | null;
 }
 
 export interface BriefingChunk {
