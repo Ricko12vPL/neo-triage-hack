@@ -53,8 +53,8 @@ function Earth() {
   );
 
   useFrame((_, delta) => {
-    if (earthRef.current) earthRef.current.rotation.y += delta * 0.01;
-    if (cloudsRef.current) cloudsRef.current.rotation.y += delta * 0.014;
+    if (earthRef.current) earthRef.current.rotation.y += delta * 0.03;
+    if (cloudsRef.current) cloudsRef.current.rotation.y += delta * 0.045;
   });
 
   return (
@@ -1225,7 +1225,7 @@ export function SkyViewPanel({
         minDistance={2.2}
         maxDistance={16}
         autoRotate
-        autoRotateSpeed={0.35}
+        autoRotateSpeed={0.12}
       />
     </Canvas>
   );
