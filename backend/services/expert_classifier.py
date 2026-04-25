@@ -43,6 +43,10 @@ from anthropic import AsyncAnthropic
 from backend.models.expert_review import ExpertCaveat, ExpertReview
 from backend.models.schemas import Candidate, Prediction
 from backend.services import cost_tracker
+from backend.services.astrometric_quality import (
+    AstrometricQualityBreakdown,
+    grade_astrometric_quality_full,
+)
 
 MODEL_VERSION = "claude-opus-4-7"
 MAX_OUTPUT_TOKENS = 4096
@@ -68,7 +72,9 @@ Use these to either back the ranker's call or push back on it. Disagreement is w
 
 When you reason: be the dry, specific, skeptical voice of someone who has lost count of false alarms and remembers the two real Torino-3+ events they saw. No hype words. Cite the specific numbers in your reasoning. If something is genuinely ambiguous, say so without endless hedging.
 
-Always emit your verdict via the `submit_expert_review` tool — never as plain text. The structured output is what the operator's dashboard renders."""
+When the prompt carries a Find_Orb-style astrometric-quality grade (A/B/C/F), let it shape the *confidence* you put on the ranker — not your endorsement of the class itself. B/C grades mean adequate-to-marginal astrometry; you should weight residual uncertainty higher and consider PARTIAL_CONCUR over CONCUR if the data is thin. Grade A means the orbit fit will converge tightly. Grade F means the data is too weak to commit to a class — your suggested_action should reflect that. Cite the specific quality bottleneck (e.g. "V=21.0 fainter side of B band") if it changes your call.
+
+Always emit your verdict via the `submit_expert_review` tool — never as plain text. The structured output is what the operator's dashboard renders. When the prompt includes an astrometric-quality grade, populate `quality_acknowledgment` with one or two sentences naming the grade and how it influenced your reasoning."""
 
 
 REVIEW_TOOL: dict[str, Any] = {
@@ -165,6 +171,16 @@ REVIEW_TOOL: dict[str, Any] = {
                 ],
                 "description": "What the operator should do tonight with this tracklet.",
             },
+            "quality_acknowledgment": {
+                "type": "string",
+                "description": (
+                    "Optional. One or two sentences naming the astrometric-quality"
+                    " grade (A/B/C/F) and how it shaped your reasoning. Cite the"
+                    " bottleneck check (e.g. 'V=21.0 puts this on the faint side"
+                    " of B'). Only populate when the prompt carries a quality"
+                    " grade — leave out otherwise."
+                ),
+            },
         },
     },
 }
@@ -229,9 +245,13 @@ def _write_cache(key: str, review: ExpertReview) -> None:
     tmp.replace(path)
 
 
-def build_user_prompt(candidate: Candidate, prediction: Prediction) -> str:
-    """Pure function: candidate + ranker output → user prompt text."""
-    return (
+def build_user_prompt(
+    candidate: Candidate,
+    prediction: Prediction,
+    quality: AstrometricQualityBreakdown | None = None,
+) -> str:
+    """Pure function: candidate + ranker output (+ optional quality) → user prompt text."""
+    base = (
         "Tracklet under review:\n"
         f"  trksub:                  {candidate.trksub}\n"
         f"  RA / Dec (J2000):        {candidate.ra_deg:.3f}° / {candidate.dec_deg:+.3f}°\n"
@@ -251,10 +271,29 @@ def build_user_prompt(candidate: Candidate, prediction: Prediction) -> str:
         f"  P(PHA):                  {prediction.prob_pha:.3f}\n"
         f"  uncertainty entropy:     {prediction.uncertainty_entropy_bits:.2f} bits\n"
         f"  model version:           {prediction.model_version}\n"
-        "\n"
-        "Submit your structured review using the `submit_expert_review` tool. The"
-        " operator will see your verdict + reasoning + caveats in the dashboard"
-        " within the next minute."
+    )
+    quality_block = ""
+    if quality is not None:
+        quality_block = (
+            "\n"
+            "Astrometric quality assessment (Find_Orb-style simplified):\n"
+            f"  grade:                   {quality.grade}\n"
+            f"  summary:                 {quality.grade_summary}\n"
+            f"  why:                     {quality.why_this_grade}\n"
+        )
+        if quality.what_would_upgrade:
+            quality_block += f"  what_would_upgrade:      {quality.what_would_upgrade}\n"
+        quality_block += (
+            f"  operator_implication:    {quality.operator_implication}\n"
+            f"  caveat:                  {quality.methodology_caveat}\n"
+        )
+    return (
+        base
+        + quality_block
+        + "\n"
+        + "Submit your structured review using the `submit_expert_review` tool. The"
+          " operator will see your verdict + reasoning + caveats in the dashboard"
+          " within the next minute."
     )
 
 
@@ -297,7 +336,18 @@ class ExpertClassifier:
         prediction: Prediction,
         *,
         force_refresh: bool = False,
+        quality: AstrometricQualityBreakdown | None = None,
     ) -> ExpertReview:
+        # Auto-derive the quality breakdown from raw candidate features
+        # so callers don't have to thread it through. Pure function — no
+        # I/O, no LLM, deterministic.
+        if quality is None:
+            quality = grade_astrometric_quality_full(
+                n_observations=candidate.n_observations,
+                arc_length_minutes=candidate.arc_length_minutes,
+                mean_magnitude_v=candidate.mean_magnitude_v,
+                digest2_neo_noid=candidate.digest2_neo_noid,
+            )
         key = cache_key(candidate, prediction)
         if not force_refresh:
             cached = _read_cache(key)
@@ -307,7 +357,7 @@ class ExpertClassifier:
                 )
                 return cached
 
-        user_prompt = build_user_prompt(candidate, prediction)
+        user_prompt = build_user_prompt(candidate, prediction, quality=quality)
         review = await self._call_opus(candidate, user_prompt)
         _write_cache(key, review)
         return review
@@ -396,6 +446,7 @@ class ExpertClassifier:
             reasoning_trace=payload["reasoning_trace"],
             caveats=caveats,
             suggested_action=payload["suggested_action"],
+            quality_acknowledgment=payload.get("quality_acknowledgment"),
             thinking_tokens_used=thinking_tokens,
             output_tokens_used=output_tokens,
             cost_usd=cost_usd,

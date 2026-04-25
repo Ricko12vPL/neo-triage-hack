@@ -130,6 +130,20 @@ export function ExpertReviewPanel({ review }: Props) {
         </div>
       </div>
 
+      {review.quality_acknowledgment && (
+        <div className="mt-4">
+          <h4 className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+            Quality acknowledgment
+          </h4>
+          <div
+            className="mt-1.5 rounded border border-zinc-800 bg-zinc-950/40 px-3 py-2 font-mono text-[11px] italic leading-relaxed text-zinc-300"
+            title="How Opus weighted Find_Orb-style astrometric quality in its endorsement"
+          >
+            {review.quality_acknowledgment}
+          </div>
+        </div>
+      )}
+
       {review.caveats.length > 0 && (
         <div className="mt-4">
           <h4 className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">

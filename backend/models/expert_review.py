@@ -68,6 +68,16 @@ class ExpertReview(BaseModel):
     caveats: list[ExpertCaveat] = Field(default_factory=list)
     suggested_action: SuggestedAction
 
+    quality_acknowledgment: str | None = Field(
+        default=None,
+        description=(
+            "How astrometric-quality grade (Find_Orb-style A/B/C/F)"
+            " influenced the reasoning. Optional — populated when the"
+            " ranker passes a quality breakdown into the prompt; absent"
+            " for legacy reviews and offline-cached pre-quality output."
+        ),
+    )
+
     thinking_tokens_used: int = 0
     output_tokens_used: int = 0
     cost_usd: float = 0.0

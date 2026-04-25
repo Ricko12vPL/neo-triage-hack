@@ -253,6 +253,22 @@ export function SkyViewContainer({
                   <span>dissent</span>
                 </div>
               </div>
+              <div
+                className="flex flex-col gap-0.5 border-t border-zinc-800/60 pt-1"
+                title="Find_Orb-style astrometric quality. A bright = high-confidence data; F dim = pursue or accept loss."
+              >
+                <span className="text-[8px] text-zinc-600">outer · quality</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-emerald-400" />
+                  <span>A</span>
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-amber-400 opacity-70 ml-2" />
+                  <span>B</span>
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-orange-400 opacity-50 ml-2" />
+                  <span>C</span>
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-rose-400 opacity-30 ml-2" />
+                  <span>F</span>
+                </div>
+              </div>
             </div>
             <div className="pointer-events-none absolute bottom-3 left-4 z-10 text-[9px] font-mono uppercase tracking-wider text-zinc-600">
               Drag to rotate · scroll to zoom · <span className="text-zinc-400">click any object to reveal its orbit</span>

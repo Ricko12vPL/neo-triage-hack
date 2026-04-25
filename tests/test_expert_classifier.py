@@ -293,3 +293,89 @@ def test_cost_computation_per_NN07():
     cost = _compute_cost_usd(input_tokens=400, output_tokens=2000)
     expected = 400 * 15 / 1_000_000 + 2000 * 75 / 1_000_000
     assert cost == pytest.approx(expected, rel=1e-9)
+
+
+# ---- Astrometric quality integration -------------------------------------
+
+
+def test_user_prompt_includes_quality_block_when_breakdown_provided():
+    """Build prompt with quality → 'Astrometric quality assessment' header present."""
+    from backend.services.astrometric_quality import grade_astrometric_quality_full
+    from backend.services.expert_classifier import build_user_prompt
+
+    candidate = _candidate()
+    prediction = _prediction()
+    quality = grade_astrometric_quality_full(
+        n_observations=candidate.n_observations,
+        arc_length_minutes=candidate.arc_length_minutes,
+        mean_magnitude_v=candidate.mean_magnitude_v,
+        digest2_neo_noid=candidate.digest2_neo_noid,
+    )
+
+    prompt = build_user_prompt(candidate, prediction, quality=quality)
+
+    assert "Astrometric quality assessment" in prompt
+    assert f"grade:                   {quality.grade}" in prompt
+    assert quality.why_this_grade in prompt
+    # what_would_upgrade only included for non-A grades
+    if quality.what_would_upgrade is not None:
+        assert quality.what_would_upgrade in prompt
+
+
+def test_user_prompt_omits_quality_block_when_no_breakdown():
+    from backend.services.expert_classifier import build_user_prompt
+
+    prompt = build_user_prompt(_candidate(), _prediction(), quality=None)
+
+    assert "Astrometric quality assessment" not in prompt
+
+
+def test_review_captures_quality_acknowledgment_from_payload(monkeypatch):
+    """Opus returns quality_acknowledgment → it lands on ExpertReview."""
+    candidate, prediction = _candidate(), _prediction()
+    classifier = ExpertClassifier()
+
+    payload = {
+        "class_endorsement": "PARTIAL_CONCUR",
+        "endorsed_class": "NEO",
+        "confidence_match": "MEDIUM",
+        "reasoning_trace": "Adequate evidence but quality is the weak link.",
+        "caveats": [],
+        "suggested_action": "request_second_epoch",
+        "quality_acknowledgment": "C-grade astrometry: 5 obs over 18 min. Confidence dropped from HIGH to MEDIUM.",
+    }
+
+    class _Block:
+        def __init__(self, type, input):
+            self.type = type
+            self.input = input
+
+    response = SimpleNamespace(
+        content=[_Block("tool_use", payload)],
+        usage=SimpleNamespace(input_tokens=300, output_tokens=400),
+    )
+    classifier._client = SimpleNamespace(
+        messages=SimpleNamespace(create=AsyncMock(return_value=response))
+    )
+    monkeypatch.setattr(ec_mod, "cost_tracker", SimpleNamespace(record=lambda **_: 0.0))
+
+    review = asyncio.run(classifier.review_one(candidate, prediction))
+
+    assert review.quality_acknowledgment is not None
+    assert "C-grade" in review.quality_acknowledgment
+    assert review.class_endorsement == "PARTIAL_CONCUR"
+
+
+def test_review_quality_acknowledgment_optional_for_legacy_responses(monkeypatch):
+    """Cached / legacy Opus output without the field → review still parses."""
+    candidate, prediction = _candidate(), _prediction()
+    classifier = ExpertClassifier()
+    classifier._client = SimpleNamespace(
+        messages=SimpleNamespace(create=AsyncMock(return_value=_opus_response()))
+    )
+    monkeypatch.setattr(ec_mod, "cost_tracker", SimpleNamespace(record=lambda **_: 0.0))
+
+    review = asyncio.run(classifier.review_one(candidate, prediction))
+
+    assert review.quality_acknowledgment is None
+    assert review.class_endorsement == "CONCUR"

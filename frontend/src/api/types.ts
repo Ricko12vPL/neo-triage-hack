@@ -84,6 +84,12 @@ export interface ExpertReview {
   reasoning_trace: string;
   caveats: ExpertCaveat[];
   suggested_action: SuggestedAction;
+  /**
+   * One or two sentences from Opus naming the Find_Orb-style astrometric
+   * quality grade and how it shaped its endorsement. Optional — present
+   * for reviews where the prompt carried a quality breakdown.
+   */
+  quality_acknowledgment?: string | null;
   thinking_tokens_used: number;
   output_tokens_used: number;
   cost_usd: number;

@@ -496,6 +496,54 @@ function ExpertReviewGlow({
   );
 }
 
+/**
+ * Outer ring tonated by Find_Orb-style astrometric quality grade.
+ *  - A: solid emerald, full opacity
+ *  - B: amber, 0.75 opacity, faint dashed pattern (rendered as thinner tube)
+ *  - C: orange, 0.50 opacity, thinner still
+ *  - F: rose, 0.30 opacity, very thin (suggests low-confidence)
+ *
+ * Effect: low-quality markers visually fade — the operator's eye is
+ * drawn to high-quality data first.
+ */
+function QualityGlow({
+  grade,
+  radius,
+}: {
+  grade: "A" | "B" | "C" | "F";
+  radius: number;
+}) {
+  const colorHex =
+    grade === "A"
+      ? "#34d399" // emerald-400
+      : grade === "B"
+        ? "#fbbf24" // amber-400
+        : grade === "C"
+          ? "#fb923c" // orange-400
+          : "#fb7185"; // rose-400
+  const opacity =
+    grade === "A" ? 0.85 : grade === "B" ? 0.55 : grade === "C" ? 0.32 : 0.2;
+  const tubeRadius =
+    grade === "A"
+      ? radius * 0.025
+      : grade === "B"
+        ? radius * 0.018
+        : grade === "C"
+          ? radius * 0.012
+          : radius * 0.008;
+  return (
+    <mesh>
+      <torusGeometry args={[radius, tubeRadius, 8, 32]} />
+      <meshBasicMaterial
+        color={colorHex}
+        transparent
+        opacity={opacity}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
 function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
@@ -623,6 +671,12 @@ function CandidateMarker({ candidate, selected, onClick }: MarkerProps) {
           <ExpertReviewGlow
             endorsement={candidate.expert_review.class_endorsement}
             radius={size * 2.6}
+          />
+        )}
+        {candidate.astrometric_quality_grade && (
+          <QualityGlow
+            grade={candidate.astrometric_quality_grade}
+            radius={size * 3.4}
           />
         )}
         {showLabel && (
