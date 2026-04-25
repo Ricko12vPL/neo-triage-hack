@@ -27,8 +27,15 @@ const SkyViewContainer = lazy(() =>
   })),
 );
 
+// Catalog + map only loaded when user opens IMPACTORS tab.
+const ImminentImpactorsLibrary = lazy(() =>
+  import("./components/ImminentImpactorsLibrary").then((m) => ({
+    default: m.ImminentImpactorsLibrary,
+  })),
+);
+
 type StreamStatus = "idle" | "streaming" | "done" | "cache_hit" | "error";
-type AppMode = "live" | "skyview" | "yr4replay";
+type AppMode = "live" | "skyview" | "impactors" | "yr4replay";
 
 const YR4_CROSS_SURVEY_CONTEXT =
   "ATLAS covered this region 6h ago to V=19.7 and saw nothing. CSS covered 14h ago to V=20.2 and saw nothing.";
@@ -297,6 +304,17 @@ export default function App() {
               Sky View
             </button>
             <button
+              onClick={() => setMode("impactors")}
+              className={[
+                "rounded px-3 py-1 font-mono uppercase tracking-wider transition-colors",
+                mode === "impactors"
+                  ? "bg-emerald-900/80 text-emerald-200"
+                  : "text-zinc-500 hover:text-zinc-300",
+              ].join(" ")}
+            >
+              Impactors
+            </button>
+            <button
               onClick={() => setMode("yr4replay")}
               className={[
                 "rounded px-3 py-1 font-mono uppercase tracking-wider transition-colors",
@@ -421,6 +439,20 @@ export default function App() {
                 handleSelect(trksub);
               }}
             />
+          </Suspense>
+        </main>
+      )}
+
+      {mode === "impactors" && (
+        <main className="overflow-hidden">
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                Loading Imminent Impactors Library…
+              </div>
+            }
+          >
+            <ImminentImpactorsLibrary />
           </Suspense>
         </main>
       )}
