@@ -14,6 +14,7 @@ import type {
   CrossValidationReport,
   DataSourceReport,
   ExpertReview,
+  ImpactCorridorEstimate,
   PopulationRiskRequest,
   PopulationRiskResponse,
   Prediction,
@@ -78,6 +79,10 @@ export const api = {
   jplCadApproaches: (designation: string, yearsWindow = 100) =>
     getJson<CloseApproach[]>(
       `/api/external/jpl-cad/${encodeURIComponent(designation)}?years_window=${yearsWindow}`,
+    ),
+  impactCorridor: (designation: string) =>
+    getJson<ImpactCorridorEstimate | null>(
+      `/api/risk/corridor/${encodeURIComponent(designation)}`,
     ),
   populationRisk: async (request: PopulationRiskRequest) => {
     const resp = await fetch(`${BASE}/api/risk/population-weighted`, {

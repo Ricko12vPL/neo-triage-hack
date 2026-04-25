@@ -20,7 +20,10 @@ import httpx
 import pytest
 
 from backend.services import jpl_sentry_client as jpl_mod
-from backend.services.jpl_sentry_client import JPLSentryClient
+from backend.services.jpl_sentry_client import (
+    JPLSentryClient,
+    estimate_corridor_from_sentry,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -318,3 +321,76 @@ def test_http_error_returns_status_error(monkeypatch, captured_requests):
     assert report.status == "ERROR"
     assert report.summary is None
     assert report.error_message and "ConnectError" in report.error_message
+
+
+# ---------------------------------------------------------------------------
+# Tests — estimate_corridor_from_sentry
+# ---------------------------------------------------------------------------
+
+
+def test_corridor_estimate_for_bennu_returns_estimate(mock_client):
+    """Bennu has 2 VIs with positive IP — corridor estimate must be returned."""
+    client = JPLSentryClient(client=mock_client)
+    report = _run(client.get_object_detail("101955"))
+    estimate = estimate_corridor_from_sentry(report=report)
+
+    assert estimate is not None
+    assert estimate.designation == "101955"
+    # Top VI is the second one (ip=8.5e-5 > 1e-7).
+    assert estimate.based_on_vi_date == "2182-09-24.12"
+    assert estimate.based_on_vi_ip == pytest.approx(8.5e-5, rel=1e-3)
+    assert estimate.based_on_vi_sigma == pytest.approx(1.8521, rel=1e-3)
+    # Sigma=1.8521 → 60s × 1.8521 = ~111s → 0.46° lon → ~51 km arc → clamped to 50.
+    assert estimate.major_axis_km >= 50.0
+    assert estimate.minor_axis_km >= 20.0
+    assert estimate.method == "jpl_sentry_approximate_b_plane"
+    assert "approximate" in estimate.caveat.lower()
+    assert estimate.source == "JPL_CNEOS_SENTRY_II"
+
+
+def test_corridor_estimate_returns_none_when_object_removed(mock_client):
+    """Apophis is REMOVED — no corridor estimate possible."""
+    client = JPLSentryClient(client=mock_client)
+    report = _run(client.get_object_detail("99942"))
+    assert report.status == "REMOVED"
+    estimate = estimate_corridor_from_sentry(report=report)
+    assert estimate is None
+
+
+def test_corridor_estimate_returns_none_when_not_found(mock_client):
+    client = JPLSentryClient(client=mock_client)
+    report = _run(client.get_object_detail("99999999"))
+    assert report.status == "NOT_FOUND"
+    assert estimate_corridor_from_sentry(report=report) is None
+
+
+def test_corridor_estimate_caveat_credits_jpl_sentry_and_phase_2(mock_client):
+    """Caveat string must mention JPL Sentry-II and Phase 2 (HONESTY-1/2/3)."""
+    client = JPLSentryClient(client=mock_client)
+    report = _run(client.get_object_detail("101955"))
+    estimate = estimate_corridor_from_sentry(report=report)
+    assert estimate is not None
+    caveat_lower = estimate.caveat.lower()
+    assert "sentry" in caveat_lower
+    assert "phase 2" in caveat_lower
+    assert "monte carlo" in caveat_lower
+
+
+def test_corridor_major_axis_scales_with_sigma_vi(mock_client):
+    """Larger sigma → wider corridor major axis (Earth-rotation arc)."""
+    client = JPLSentryClient(client=mock_client)
+    report = _run(client.get_object_detail("101955"))
+    assert report.summary is not None and report.virtual_impactors
+
+    # Build two synthetic reports with hand-picked sigmas to verify scaling.
+    from copy import deepcopy
+
+    big = deepcopy(report)
+    small = deepcopy(report)
+    big.virtual_impactors[1].sigma = 100.0
+    small.virtual_impactors[1].sigma = 0.5
+
+    big_estimate = estimate_corridor_from_sentry(report=big)
+    small_estimate = estimate_corridor_from_sentry(report=small)
+    assert big_estimate is not None and small_estimate is not None
+    assert big_estimate.major_axis_km > small_estimate.major_axis_km

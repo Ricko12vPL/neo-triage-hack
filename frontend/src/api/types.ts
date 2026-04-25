@@ -330,6 +330,30 @@ export interface AegisRiskEntry {
   source_url: string;
 }
 
+/**
+ * Approximate impact-corridor estimate from JPL Sentry-II top virtual
+ * impactor + Earth-rotation uncertainty. Returned by
+ * GET /api/risk/corridor/{designation}. Null when the object is not
+ * Sentry-tracked or has no positive-IP virtual impactor — caller falls
+ * back to the deferred placeholder.
+ */
+export interface ImpactCorridorEstimate {
+  designation: string;
+  center_latitude_deg: number;
+  center_longitude_deg: number;
+  major_axis_km: number;
+  minor_axis_km: number;
+  orientation_deg: number;
+  based_on_vi_date: string;
+  based_on_vi_ip: number;
+  based_on_vi_sigma: number | null;
+  method: "jpl_sentry_approximate_b_plane";
+  caveat: string;
+  source: string;
+  source_url: string;
+  fetched_at_utc: string;
+}
+
 export interface PopulationRiskRequest {
   designation: string;
   impact_probability: number;

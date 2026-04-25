@@ -129,6 +129,59 @@ class SentryDetailReport(BaseModel):
     cache_hit: bool = False
 
 
+class ImpactCorridorEstimate(BaseModel):
+    """Approximate impact-corridor footprint derived from JPL Sentry-II data.
+
+    For famous NEOs that are still on the Sentry risk list (or are in
+    the cached snapshot), we extract the top virtual impactor (the one
+    with the largest per-VI impact probability) and project an ellipse
+    spanning the Earth-rotation arc swept out during the time-uncertainty
+    window implied by `sigma`. This is a deliberately simple proxy for
+    the real production b-plane Monte Carlo and the response carries an
+    explicit caveat to that effect.
+
+    Sourcing flow: `JPLSentryClient.get_object_detail(des) → top VI →
+    estimate_corridor_from_sentry → ImpactCorridorEstimate`.
+    """
+
+    designation: str
+    center_latitude_deg: float = Field(..., description="Approximate corridor centre latitude")
+    center_longitude_deg: float = Field(
+        ..., description="Approximate corridor centre longitude"
+    )
+    major_axis_km: float = Field(
+        ..., gt=0, description="Long-axis length (Earth-rotation direction)"
+    )
+    minor_axis_km: float = Field(
+        ..., gt=0, description="Short-axis length (transverse to rotation)"
+    )
+    orientation_deg: float = Field(
+        default=0.0,
+        description="0° = E-W (Earth-rotation), 90° = N-S",
+    )
+    based_on_vi_date: str = Field(
+        ..., description="Calendar date of the top virtual impactor used"
+    )
+    based_on_vi_ip: float = Field(
+        ..., ge=0.0, le=1.0, description="Impact probability of the top VI"
+    )
+    based_on_vi_sigma: float | None = Field(
+        default=None,
+        description="Method-specific sigma of the top VI (MC or LOV)",
+    )
+    method: Literal[
+        "jpl_sentry_approximate_b_plane",
+    ] = "jpl_sentry_approximate_b_plane"
+    caveat: str = (
+        "Approximate corridor from JPL Sentry-II top virtual impactor"
+        " sigma + Earth-rotation uncertainty. Real production output uses"
+        " full b-plane Monte Carlo (Phase 2)."
+    )
+    source: str = "JPL_CNEOS_SENTRY_II"
+    source_url: str = "https://cneos.jpl.nasa.gov/sentry/"
+    fetched_at_utc: datetime
+
+
 # ---------------------------------------------------------------------------
 # JPL CAD (close approach data)
 # ---------------------------------------------------------------------------

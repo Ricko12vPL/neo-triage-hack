@@ -19,7 +19,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from backend.data.population_grid import (
@@ -28,9 +28,15 @@ from backend.data.population_grid import (
     population_density_at,
     population_in_circle,
 )
+from backend.models.external import ImpactCorridorEstimate
 from backend.services.impact_damage_model import (
     estimate_damage,
     estimate_diameter_from_h,
+)
+from backend.services.jpl_sentry_client import (
+    JPLSentryClient,
+    estimate_corridor_from_sentry,
+    get_jpl_sentry_client,
 )
 
 router = APIRouter(prefix="/api/risk", tags=["risk"])
@@ -169,3 +175,33 @@ async def population_weighted_risk(req: PopulationRiskRequest) -> PopulationRisk
         ),
         computed_at_utc=datetime.now(UTC),
     )
+
+
+@router.get(
+    "/corridor/{designation}",
+    response_model=ImpactCorridorEstimate | None,
+    responses={
+        200: {
+            "description": (
+                "Approximate corridor estimate from JPL Sentry-II top virtual"
+                " impactor. Null body when the object is not on the Sentry"
+                " risk list (e.g. removed, never tracked, or has no positive-"
+                "IP virtual impactor)."
+            )
+        },
+    },
+)
+async def impact_corridor(
+    designation: str,
+    sentry_client: JPLSentryClient = Depends(get_jpl_sentry_client),
+) -> ImpactCorridorEstimate | None:
+    """Return an approximate b-plane corridor for a Sentry-tracked NEO.
+
+    Backed by the JPL CNEOS Sentry-II API via JPLSentryClient (cached
+    on disk for `CACHE_TTL_HOURS`). Returns `null` (HTTP 200) when no
+    corridor can be estimated — callers should treat this the same as
+    'famous NEO without active Sentry entry' and fall back to the
+    deferred placeholder.
+    """
+    report = await sentry_client.get_object_detail(designation)
+    return estimate_corridor_from_sentry(report=report)

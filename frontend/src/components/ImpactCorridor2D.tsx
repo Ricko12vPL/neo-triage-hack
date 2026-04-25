@@ -6,6 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import type { ImpactCorridorEstimate } from "../api/types";
 import { geometryToSvgPath, type Project } from "../lib/geojson_to_svg";
 import { TOP_CITIES, type City } from "../lib/world_cities";
 
@@ -64,11 +65,30 @@ function radiusKmToViewboxUnits(km: number): number {
   return (km / 111.0 / 180) * VIEWBOX_H;
 }
 
+/**
+ * Three corridor sources with distinct visual + textual treatment:
+ *   - demo_hypothetical: P21YR4A or other demo fixture, ESA YR4-style
+ *     equatorial band. Amber banner.
+ *   - real_jpl_sentry: famous NEO with active Sentry-II entry. Approximate
+ *     b-plane corridor positioned + sized from the API estimate. Emerald
+ *     banner referencing the top virtual impactor + sigma + Phase 2.
+ *   - none: no corridor overlay (live MPC tracklets without OD use the
+ *     DeferredCorridorPlaceholder above this component, BLOCK_3).
+ */
+export type CorridorType = "demo_hypothetical" | "real_jpl_sentry" | "none";
+
 interface Props {
   impactLatitudeDeg: number;
   impactLongitudeDeg: number;
   damageRadiusKm: number;
+  /**
+   * Backwards-compatible alias for `corridorType="demo_hypothetical"`.
+   * Existing P21YR4A demo callers still pass this — newer callers should
+   * pass `corridorType` directly.
+   */
   showYR4Corridor?: boolean;
+  corridorType?: CorridorType;
+  realCorridor?: ImpactCorridorEstimate | null;
 }
 
 export function ImpactCorridor2D({
@@ -76,7 +96,16 @@ export function ImpactCorridor2D({
   impactLongitudeDeg,
   damageRadiusKm,
   showYR4Corridor = false,
+  corridorType,
+  realCorridor,
 }: Props) {
+  // Resolve corridor source. Explicit prop wins; legacy showYR4Corridor
+  // maps to demo_hypothetical.
+  const resolvedType: CorridorType =
+    corridorType ?? (showYR4Corridor ? "demo_hypothetical" : "none");
+  const showRealCorridor =
+    resolvedType === "real_jpl_sentry" && realCorridor != null;
+  const showDemoCorridor = resolvedType === "demo_hypothetical";
   const [countries, setCountries] = useState<CountriesGeoJSON | null>(
     cachedCountries,
   );
@@ -228,10 +257,7 @@ export function ImpactCorridor2D({
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Banner stays at top — replaced by per-corridor banner in BLOCK_2/3. */}
-      <div className="rounded border border-orange-900/40 bg-amber-950/15 px-2 py-1 text-[9px] uppercase tracking-wider text-amber-300/90">
-        ⚠ Hypothetical corridor — actual computation requires full orbit determination (Phase 2)
-      </div>
+      <CorridorBanner type={resolvedType} realCorridor={realCorridor ?? null} />
 
       <div className="relative mt-1.5">
         <svg
@@ -315,8 +341,8 @@ export function ImpactCorridor2D({
               />
             ))}
 
-            {/* YR4-style equatorial corridor band */}
-            {showYR4Corridor && (
+            {/* Demo: YR4-style equatorial corridor band (amber) */}
+            {showDemoCorridor && (
               <g opacity={0.6}>
                 <ellipse
                   cx={VIEWBOX_W / 2}
@@ -331,6 +357,11 @@ export function ImpactCorridor2D({
                   vectorEffect="non-scaling-stroke"
                 />
               </g>
+            )}
+
+            {/* Real: JPL Sentry-II approximate b-plane corridor (emerald) */}
+            {showRealCorridor && realCorridor && (
+              <RealCorridorEllipse estimate={realCorridor} />
             )}
 
             {/* Damage circle at impact hypothesis */}
@@ -485,7 +516,7 @@ export function ImpactCorridor2D({
         )}{" "}
         · top-30 metro markers (size ∝ log population). Damage circle from
         Collins et al. 2017 5-psi scaling.{" "}
-        {showYR4Corridor && (
+        {showDemoCorridor && (
           <>
             Corridor band based on{" "}
             <a
@@ -499,8 +530,104 @@ export function ImpactCorridor2D({
             ; production = Find_Orb b-plane Monte Carlo.
           </>
         )}
+        {showRealCorridor && realCorridor && (
+          <>
+            Corridor approximated from{" "}
+            <a
+              href="https://cneos.jpl.nasa.gov/sentry/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-400 hover:text-emerald-300"
+            >
+              JPL Sentry-II top virtual impactor ↗
+            </a>
+            {" "}({realCorridor.based_on_vi_date}, IP=
+            {realCorridor.based_on_vi_ip.toExponential(1)}); production = full
+            b-plane Monte Carlo.
+          </>
+        )}
       </p>
     </div>
+  );
+}
+
+/* -----------------------------------------------------------------------
+ * Sub-components
+ * --------------------------------------------------------------------- */
+
+interface CorridorBannerProps {
+  type: CorridorType;
+  realCorridor: ImpactCorridorEstimate | null;
+}
+
+function CorridorBanner({ type, realCorridor }: CorridorBannerProps) {
+  if (type === "real_jpl_sentry" && realCorridor) {
+    return (
+      <div className="rounded border border-emerald-800/60 bg-emerald-950/25 px-2 py-1 text-[9px] uppercase tracking-wider text-emerald-300/90">
+        ✓ Real corridor — approximate from{" "}
+        <span className="font-semibold text-emerald-200">
+          JPL Sentry-II top virtual impactor
+        </span>{" "}
+        {realCorridor.based_on_vi_date} · IP=
+        {realCorridor.based_on_vi_ip.toExponential(1)} · Phase 2 = full b-plane
+        Monte Carlo
+      </div>
+    );
+  }
+  if (type === "demo_hypothetical") {
+    return (
+      <div className="rounded border border-orange-900/40 bg-amber-950/15 px-2 py-1 text-[9px] uppercase tracking-wider text-amber-300/90">
+        ⚠ Hypothetical corridor — based on ESA NEOCC YR4 publication style
+        (Phase 2 = full orbit determination)
+      </div>
+    );
+  }
+  return (
+    <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[9px] uppercase tracking-wider text-zinc-400">
+      Damage circle only — no corridor source available
+    </div>
+  );
+}
+
+interface RealCorridorEllipseProps {
+  estimate: ImpactCorridorEstimate;
+}
+
+/**
+ * Render the JPL Sentry-derived corridor as an emerald ellipse centred at
+ * the estimate's lat/lon, with axes scaled from km via radiusKmToViewboxUnits.
+ * Minor axis is treated as the latitudinal half-extent so a 1:20 corridor
+ * shows up as a thin band — matching production b-plane visualisations.
+ */
+function RealCorridorEllipse({ estimate }: RealCorridorEllipseProps) {
+  const center = project(estimate.center_latitude_deg, estimate.center_longitude_deg);
+  const major_units = Math.max(radiusKmToViewboxUnits(estimate.major_axis_km), 6);
+  const minor_units = Math.max(radiusKmToViewboxUnits(estimate.minor_axis_km), 2);
+  return (
+    <g
+      opacity={0.78}
+      transform={`rotate(${estimate.orientation_deg} ${center.x} ${center.y})`}
+    >
+      <ellipse
+        cx={center.x}
+        cy={center.y}
+        rx={major_units}
+        ry={minor_units}
+        fill="rgba(16, 185, 129, 0.25)"
+        stroke="#10b981"
+        strokeOpacity={0.85}
+        strokeWidth={2}
+        strokeDasharray="6 3"
+        vectorEffect="non-scaling-stroke"
+      />
+      <circle
+        cx={center.x}
+        cy={center.y}
+        r={2.5}
+        fill="#34d399"
+        vectorEffect="non-scaling-stroke"
+      />
+    </g>
   );
 }
 
