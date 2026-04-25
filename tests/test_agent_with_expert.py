@@ -92,7 +92,7 @@ async def _run_one_cycle(agent_loop_mod) -> None:
 async def test_agent_cycle_calls_expert_review_for_top_k(tmp_path: Path) -> None:
     candidates = [_candidate(f"T{i:03d}") for i in range(10)]
     review_batch_mock = AsyncMock(
-        return_value=[_review(f"T{i:03d}") for i in range(5)]
+        return_value=[_review(f"T{i:03d}") for i in range(10)]
     )
 
     with (
@@ -117,7 +117,11 @@ async def test_agent_cycle_calls_expert_review_for_top_k(tmp_path: Path) -> None
     review_batch_mock.assert_awaited_once()
     args, _kwargs = review_batch_mock.await_args
     top_k_pairs = list(args[0])
-    assert len(top_k_pairs) == agent_loop_mod.EXPERT_TOP_K  # 5
+    # The fixture has 10 candidates and EXPERT_TOP_K may be 20 (or anything
+    # we tune later) — what matters is the slice never exceeds the cap and
+    # is bounded above by the number of candidates available.
+    assert len(top_k_pairs) <= agent_loop_mod.EXPERT_TOP_K
+    assert len(top_k_pairs) == min(len(candidates), agent_loop_mod.EXPERT_TOP_K)
 
 
 @pytest.mark.asyncio

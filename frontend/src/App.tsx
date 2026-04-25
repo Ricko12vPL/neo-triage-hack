@@ -61,8 +61,11 @@ export default function App() {
   >({});
   // Tracks the trksub currently being fetched so the effect doesn't
   // double-fire. A ref instead of state keeps the effect lint-clean and
-  // avoids an extra render per fetch.
+  // avoids an extra render per fetch. We mirror it in state so the
+  // CandidateList row can render a "…opus" loading chip while we wait.
   const onDemandReviewLoadingRef = useRef<string | null>(null);
+  const [onDemandReviewLoadingDisplay, setOnDemandReviewLoadingDisplay] =
+    useState<string | null>(null);
 
   // YR4 replay state
   const [yr4Timeline, setYr4Timeline] = useState<YR4Milestone[]>([]);
@@ -82,7 +85,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     api
-      .ranked(200, { expert: true, k: 5 })
+      .ranked(200, { expert: true, k: 20 })
       .then((items) => {
         if (cancelled) return;
         setCandidates(items);
@@ -104,7 +107,7 @@ export default function App() {
   useEffect(() => {
     const id = setInterval(() => {
       api
-        .ranked(200, { expert: true, k: 5 })
+        .ranked(200, { expert: true, k: 20 })
         .then(setCandidates)
         .catch(() => {});
     }, 15 * 60 * 1000);
@@ -146,6 +149,7 @@ export default function App() {
     if (!base || base.expert_review || onDemandReviews[selected]) return;
     if (onDemandReviewLoadingRef.current === selected) return;
     onDemandReviewLoadingRef.current = selected;
+    setOnDemandReviewLoadingDisplay(selected);
     let cancelled = false;
     api
       .expertReview(selected)
@@ -159,6 +163,7 @@ export default function App() {
       .finally(() => {
         if (!cancelled && onDemandReviewLoadingRef.current === selected) {
           onDemandReviewLoadingRef.current = null;
+          setOnDemandReviewLoadingDisplay(null);
         }
       });
     return () => {
@@ -324,9 +329,17 @@ export default function App() {
             onSelect={handleSelect}
             loading={loading}
             observerLocation={observerLocation}
+            expertReviewLoadingTrksub={onDemandReviewLoadingDisplay}
           />
 
-          <section className="flex flex-col overflow-hidden">
+          {/*
+           * The right pane stacks PredictionCard + ExpertReviewPanel +
+           * BriefingPanel. With Opus reviews now embedded the total height
+           * easily exceeds one viewport, so the wrapper must allow vertical
+           * scrolling. min-h-0 keeps the inner overflow constraint honest
+           * inside the parent grid row.
+           */}
+          <section className="flex min-h-0 flex-col overflow-y-auto">
             {loadError ? (
               <div className="flex h-full items-center justify-center px-6 text-sm text-red-300">
                 Failed to load candidates: {loadError}

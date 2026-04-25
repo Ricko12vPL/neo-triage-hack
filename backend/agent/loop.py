@@ -41,7 +41,7 @@ _log = logging.getLogger(__name__)
 CYCLE_INTERVAL_SECONDS = 300        # 5 minutes
 COST_CAP_USD = 25.0                 # stop Claude calls above this; loop continues
 MAX_BRIEFINGS_PER_CYCLE = 3         # cost control: max Opus calls per cycle
-EXPERT_TOP_K = 5                    # how many top-by-P(NEO) get reviewed each cycle
+EXPERT_TOP_K = 20                   # top-by-P(NEO) reviewed each cycle (cache-friendly)
 EXPERT_HOURLY_COST_CAP_USD = 5.0    # hourly circuit breaker on expert review spend
 BACKOFF_STEPS_SECONDS = [60, 300, 900]  # exponential backoff on consecutive errors
 
