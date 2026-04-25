@@ -249,6 +249,36 @@ export interface SentryDetailReport {
   cache_hit: boolean;
 }
 
+export interface AegisRiskEntry {
+  designation: string;
+  name: string | null;
+  diameter_m: number | null;
+  star_flag: boolean;
+  vi_max_date_utc: string | null;
+  impact_probability_max: number;
+  palermo_scale_max: number;
+  torino_scale: number;
+  velocity_km_s: number | null;
+  impact_year_range: string;
+  impact_probability_cumulative: number;
+  palermo_scale_cumulative: number;
+  fetched_at_utc: string;
+  source: string;
+  source_url: string;
+}
+
+export type ConvergenceVerdict = "concur" | "diverge" | "insufficient_data";
+
+export interface CrossValidationReport {
+  designation_query: string;
+  sentry: SentryDetailReport | null;
+  aegis: AegisRiskEntry | null;
+  in_aegis_risk_list: boolean;
+  convergence: ConvergenceVerdict;
+  convergence_explanation: string;
+  retrieved_at_utc: string;
+}
+
 export interface YR4Milestone {
   hour: number;
   n_observations: number;

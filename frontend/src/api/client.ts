@@ -4,11 +4,13 @@
  * base means same-origin.
  */
 import type {
+  AegisRiskEntry,
   AgentStatus,
   BriefingChunk,
   BriefingRequest,
   Candidate,
   CostSummary,
+  CrossValidationReport,
   DataSourceReport,
   ExpertReview,
   Prediction,
@@ -59,6 +61,16 @@ export const api = {
   jplSentryDetail: (designation: string) =>
     getJson<SentryDetailReport>(
       `/api/external/jpl-sentry/${encodeURIComponent(designation)}`,
+    ),
+  esaAegisRiskList: () =>
+    getJson<AegisRiskEntry[]>("/api/external/esa-aegis/risk-list"),
+  esaAegisObject: (designation: string) =>
+    getJson<AegisRiskEntry | null>(
+      `/api/external/esa-aegis/${encodeURIComponent(designation)}`,
+    ),
+  crossValidation: (designation: string) =>
+    getJson<CrossValidationReport>(
+      `/api/external/cross-validation/${encodeURIComponent(designation)}`,
     ),
 };
 
