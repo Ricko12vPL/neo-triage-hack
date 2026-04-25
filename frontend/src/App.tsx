@@ -61,11 +61,12 @@ export default function App() {
     [events],
   );
 
-  // Load initial ranked candidates
+  // Load initial ranked candidates. Limit 50 covers the full live NEOCP
+  // window (typically 20–50 active tracklets) plus the curated demo set.
   useEffect(() => {
     let cancelled = false;
     api
-      .ranked(10)
+      .ranked(50)
       .then((items) => {
         if (cancelled) return;
         setCandidates(items);
@@ -87,7 +88,7 @@ export default function App() {
   useEffect(() => {
     const id = setInterval(() => {
       api
-        .ranked(10)
+        .ranked(50)
         .then(setCandidates)
         .catch(() => {});
     }, 15 * 60 * 1000);
