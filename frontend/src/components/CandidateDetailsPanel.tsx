@@ -6,6 +6,7 @@ import {
 import { computeTorinoFromCandidate } from "../lib/torino";
 import { TorinoBadge } from "./TorinoBadge";
 import { ExpertReviewPanel } from "./ExpertReviewPanel";
+import { AstrometricQualitySection } from "./AstrometricQualitySection";
 import { computeMotionEnvelope, hashTrksub } from "../lib/proper_motion";
 
 interface Props {
@@ -364,6 +365,12 @@ export function CandidateDetailsPanel({
             these downstream from MPC + JPL — we don't redo the solve.
           </p>
         </Section>
+
+        {candidate.astrometric_quality && (
+          <AstrometricQualitySection
+            breakdown={candidate.astrometric_quality}
+          />
+        )}
 
         <Section title="Classifier">
           <Row
