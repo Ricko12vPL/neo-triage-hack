@@ -86,6 +86,19 @@ class Candidate(BaseModel):
         default=None,
         description="When this row was fetched (LIVE_MPC_NEOCP only).",
     )
+    impactor_case_designation: str | None = Field(
+        default=None,
+        description=(
+            "If this candidate is a demo fixture that re-creates a real "
+            "historical pre-impact prediction, this field links it to the "
+            "matching entry in the Imminent Impactors Library catalog (e.g. "
+            "P21YR4A → '2024 YR4'). Frontend uses this to fetch the real "
+            "published trajectory, population-in-corridor figure, and "
+            "honest-disclosure banner from /api/imminent-impactors/{des}. "
+            "None for live MPC tracklets and synthetic demo fixtures with "
+            "no real-world counterpart."
+        ),
+    )
 
 
 class Prediction(BaseModel):

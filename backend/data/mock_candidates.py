@@ -176,6 +176,7 @@ MOCK_CANDIDATES: list[Candidate] = [
         impact_probability=0.024,
         absolute_magnitude_h=24.0,
         data_source='DEMO_FIXTURE',
+        impactor_case_designation='2024 YR4',
     ),
     # --- Hybrid-classifier disagreement fixture (Opus DISSENT demo) -----
     # Crafted so the Bayesian ranker (rate/mag/digest2/ecliptic-latitude
