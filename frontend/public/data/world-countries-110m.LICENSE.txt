@@ -1,0 +1,13 @@
+Source: Natural Earth (https://www.naturalearthdata.com/)
+Original: ne_110m_admin_0_countries (1:110m cultural admin-0)
+Repository mirror: https://github.com/martynafford/natural-earth-geojson
+License: Public Domain (Natural Earth project terms)
+
+Stripped + simplified on 2026-04-25 for the neo-triage hackathon submission:
+  - Removed every property except `NAME`.
+  - Rounded coordinates to 2 decimal places (~1 km at equator, well below
+    the underlying 110m source resolution of ~110 km).
+
+Retains: country outline polygons / multipolygons + country name.
+Resolution: 1:110 million — appropriate for global views, NOT for
+zoom levels below ~1000 km scale.

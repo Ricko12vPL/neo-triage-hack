@@ -1,68 +1,68 @@
-import { useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { geometryToSvgPath, type Project } from "../lib/geojson_to_svg";
+import { TOP_CITIES, type City } from "../lib/world_cities";
 
 /**
  * Impact-corridor visualization on an Equirectangular Earth projection.
  *
- * Lives inside PopulationRiskPanel. Honest about what it represents:
- * for famous-NEO targets (P21YR4A demo) we draw a YR4-style equatorial
- * corridor band based on the publicly published ESA NEOCC visualisation
- * (Feb 2025). For arbitrary candidates we just render the damage circle
- * at the hypothetical impact point.
+ * Lives inside PopulationRiskPanel. Renders four layers:
+ *   1. Ocean background + lat/lon graticule (always)
+ *   2. Country outlines from Natural Earth 1:110m public-domain GeoJSON
+ *      (loaded once on mount from /data/world-countries-110m.json)
+ *   3. Optional YR4-style corridor band (showYR4Corridor=true)
+ *   4. Damage circle at the impact hypothesis lat/lon
+ *   5. Top-30 metro population dots (size ∝ log population)
  *
- * No real continent outlines — instead we use the top-50-cities point
- * cloud + 30° lat/lon grid as the spatial backdrop. Cleaner at the 320px
- * panel size than a topojson rasterisation, and doesn't need an extra
- * client-side dependency.
+ * Operator interaction: mouse-wheel zoom (1× → 8×), click-and-drag pan,
+ * reset button, scale-bar updates with zoom. Hover any city dot →
+ * tooltip with name + country + metro pop + coordinates.
  *
- * Reference (corridor shape): ESA NEOCC, "Asteroid 2024 YR4 no longer
- * poses significant impact risk", Feb 2025
- *   https://www.esa.int/Space_Safety/Planetary_Defence/Asteroid_2024_YR4_no_longer_poses_significant_impact_risk
+ * Honest disclosure: the YR4-style corridor remains marked as
+ * HYPOTHETICAL — Phase 2 = Find_Orb b-plane Monte Carlo. The continent
+ * outlines are 110m resolution (~110 km accuracy) — not suitable for
+ * deep zoom but coherent at the global scale we operate at.
+ *
+ * GeoJSON source: Natural Earth Public Domain
+ *   https://www.naturalearthdata.com/
+ *   ne_110m_admin_0_countries.json (stripped + simplified to ~55 KB gzip)
  */
 
-interface City {
-  name: string;
-  latitude_deg: number;
-  longitude_deg: number;
-  metro_population: number;
+interface City1 extends City {}
+
+const VIEWBOX_W = 1000;
+const VIEWBOX_H = 500;
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 8;
+
+interface CountriesGeoJSON {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    geometry: { type: string; coordinates: unknown };
+    properties: { NAME?: string };
+  }>;
 }
 
-// Mirror of backend top-50 (subset — only the 30 largest fit comfortably
-// at 320×160 px). Coordinates from Wikipedia 2023 figures.
-const CITIES: City[] = [
-  { name: "Tokyo", latitude_deg: 35.68, longitude_deg: 139.65, metro_population: 37_400_000 },
-  { name: "Delhi", latitude_deg: 28.7, longitude_deg: 77.1, metro_population: 32_900_000 },
-  { name: "Shanghai", latitude_deg: 31.23, longitude_deg: 121.47, metro_population: 28_500_000 },
-  { name: "Dhaka", latitude_deg: 23.81, longitude_deg: 90.41, metro_population: 22_500_000 },
-  { name: "Sao Paulo", latitude_deg: -23.55, longitude_deg: -46.63, metro_population: 22_600_000 },
-  { name: "Mexico City", latitude_deg: 19.43, longitude_deg: -99.13, metro_population: 22_500_000 },
-  { name: "Cairo", latitude_deg: 30.04, longitude_deg: 31.24, metro_population: 22_200_000 },
-  { name: "Beijing", latitude_deg: 39.9, longitude_deg: 116.41, metro_population: 21_500_000 },
-  { name: "Mumbai", latitude_deg: 19.08, longitude_deg: 72.88, metro_population: 21_400_000 },
-  { name: "Osaka", latitude_deg: 34.69, longitude_deg: 135.5, metro_population: 19_000_000 },
-  { name: "New York", latitude_deg: 40.71, longitude_deg: -74.01, metro_population: 18_800_000 },
-  { name: "Karachi", latitude_deg: 24.86, longitude_deg: 67.0, metro_population: 16_900_000 },
-  { name: "Buenos Aires", latitude_deg: -34.6, longitude_deg: -58.38, metro_population: 15_400_000 },
-  { name: "Istanbul", latitude_deg: 41.01, longitude_deg: 28.98, metro_population: 15_500_000 },
-  { name: "Manila", latitude_deg: 14.6, longitude_deg: 120.98, metro_population: 14_400_000 },
-  { name: "Lagos", latitude_deg: 6.52, longitude_deg: 3.38, metro_population: 14_400_000 },
-  { name: "Kinshasa", latitude_deg: -4.44, longitude_deg: 15.27, metro_population: 14_300_000 },
-  { name: "Rio de Janeiro", latitude_deg: -22.91, longitude_deg: -43.17, metro_population: 13_500_000 },
-  { name: "Los Angeles", latitude_deg: 34.05, longitude_deg: -118.24, metro_population: 13_200_000 },
-  { name: "Moscow", latitude_deg: 55.76, longitude_deg: 37.62, metro_population: 12_500_000 },
-  { name: "Bangalore", latitude_deg: 12.97, longitude_deg: 77.59, metro_population: 12_300_000 },
-  { name: "Paris", latitude_deg: 48.86, longitude_deg: 2.35, metro_population: 11_000_000 },
-  { name: "Lima", latitude_deg: -12.05, longitude_deg: -77.04, metro_population: 10_700_000 },
-  { name: "Bangkok", latitude_deg: 13.76, longitude_deg: 100.5, metro_population: 10_500_000 },
-  { name: "Jakarta", latitude_deg: -6.21, longitude_deg: 106.85, metro_population: 10_600_000 },
-  { name: "Seoul", latitude_deg: 37.57, longitude_deg: 126.98, metro_population: 9_700_000 },
-  { name: "London", latitude_deg: 51.51, longitude_deg: -0.13, metro_population: 9_500_000 },
-  { name: "Tehran", latitude_deg: 35.69, longitude_deg: 51.39, metro_population: 9_000_000 },
-  { name: "Chicago", latitude_deg: 41.88, longitude_deg: -87.63, metro_population: 8_900_000 },
-  { name: "Sydney", latitude_deg: -33.87, longitude_deg: 151.21, metro_population: 5_400_000 },
-];
+let cachedCountries: CountriesGeoJSON | null = null;
 
-const W = 360;
-const H = 180;
+/** Equirectangular projection over the full 1000×500 viewBox. */
+const project: Project = (lat, lon) => ({
+  x: ((lon + 180) / 360) * VIEWBOX_W,
+  y: ((90 - lat) / 180) * VIEWBOX_H,
+});
+
+function radiusKmToViewboxUnits(km: number): number {
+  // 1° latitude ≈ 111 km. 180° latitude → VIEWBOX_H units.
+  // Convert km → degrees latitude → viewBox units.
+  return (km / 111.0 / 180) * VIEWBOX_H;
+}
 
 interface Props {
   impactLatitudeDeg: number;
@@ -71,176 +71,422 @@ interface Props {
   showYR4Corridor?: boolean;
 }
 
-function project(lat: number, lon: number): [number, number] {
-  // Equirectangular: x = (lon + 180) / 360 * W, y = (90 - lat) / 180 * H
-  const x = ((lon + 180) / 360) * W;
-  const y = ((90 - lat) / 180) * H;
-  return [x, y];
-}
-
-function radiusKmToDegLat(km: number): number {
-  return km / 111.0;
-}
-
 export function ImpactCorridor2D({
   impactLatitudeDeg,
   impactLongitudeDeg,
   damageRadiusKm,
   showYR4Corridor = false,
 }: Props) {
-  const [impactX, impactY] = useMemo(
-    () => project(impactLatitudeDeg, impactLongitudeDeg),
-    [impactLatitudeDeg, impactLongitudeDeg],
+  const [countries, setCountries] = useState<CountriesGeoJSON | null>(
+    cachedCountries,
   );
-  const damageRadiusPx = useMemo(() => {
-    // Convert km → degrees of latitude → pixel y-units.
-    const degLat = radiusKmToDegLat(damageRadiusKm);
-    return (degLat / 180) * H;
-  }, [damageRadiusKm]);
+  const [countriesError, setCountriesError] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [tooltip, setTooltip] = useState<
+    { city: City1; x: number; y: number } | null
+  >(null);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const dragStateRef = useRef<{
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    startPanX: number;
+    startPanY: number;
+  } | null>(null);
+
+  // Load GeoJSON once per browser session.
+  useEffect(() => {
+    if (cachedCountries) {
+      setCountries(cachedCountries);
+      return;
+    }
+    let cancelled = false;
+    fetch("/data/world-countries-110m.json")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data: CountriesGeoJSON) => {
+        if (cancelled) return;
+        cachedCountries = data;
+        setCountries(data);
+      })
+      .catch((err: Error) => {
+        if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.warn("[ImpactCorridor2D] world GeoJSON load failed:", err);
+        setCountriesError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const [impactX, impactY] = useMemo(() => {
+    const p = project(impactLatitudeDeg, impactLongitudeDeg);
+    return [p.x, p.y];
+  }, [impactLatitudeDeg, impactLongitudeDeg]);
+
+  const damageRadiusUnits = useMemo(
+    () => Math.max(radiusKmToViewboxUnits(damageRadiusKm), 4),
+    [damageRadiusKm],
+  );
+
+  // Country paths memoised over the GeoJSON load — pure function of input.
+  const countryPaths = useMemo(() => {
+    if (!countries) return [];
+    return countries.features.map((feature) => ({
+      name: feature.properties.NAME ?? "",
+      d: geometryToSvgPath(feature.geometry, project),
+    }));
+  }, [countries]);
+
+  const handleWheel = useCallback((e: WheelEvent) => {
+    if (!svgRef.current) return;
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.85 : 1.15;
+    setZoom((z) => {
+      const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z * factor));
+      return next;
+    });
+  }, []);
+
+  // Native non-passive wheel listener so preventDefault works.
+  useEffect(() => {
+    const node = svgRef.current;
+    if (!node) return;
+    node.addEventListener("wheel", handleWheel, { passive: false });
+    return () => node.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
+
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStateRef.current = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startPanX: pan.x,
+      startPanY: pan.y,
+    };
+    setTooltip(null);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const drag = dragStateRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const dx = e.clientX - drag.startClientX;
+    const dy = e.clientY - drag.startClientY;
+    // Pan is in viewBox units. Convert client pixels → viewBox units via
+    // SVG bounding rect.
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const scaleX = VIEWBOX_W / rect.width;
+    const scaleY = VIEWBOX_H / rect.height;
+    setPan({
+      x: drag.startPanX + dx * scaleX,
+      y: drag.startPanY + dy * scaleY,
+    });
+  };
+
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (dragStateRef.current?.pointerId !== e.pointerId) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    dragStateRef.current = null;
+  };
+
+  const reset = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleCityEnter = (city: City1, e: React.PointerEvent<SVGCircleElement>) => {
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
+    setTooltip({
+      city,
+      x: e.clientX - containerRect.left,
+      y: e.clientY - containerRect.top,
+    });
+  };
+
+  const handleCityLeave = () => setTooltip(null);
 
   const gridLatLines = [-60, -30, 0, 30, 60];
   const gridLonLines = [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150];
 
+  // Scale bar: at zoom=1, 1000 viewBox units span 360° at equator ≈ 40000 km.
+  // 100 viewBox units → 4000 km / zoom.
+  const scaleKmPer100 = 4000 / zoom;
+  const scaleLabel =
+    scaleKmPer100 >= 1000
+      ? `${(scaleKmPer100 / 1000).toFixed(1)}k km`
+      : `${Math.round(scaleKmPer100)} km`;
+
   return (
-    <div>
+    <div ref={containerRef} className="relative">
+      {/* Banner stays at top — replaced by per-corridor banner in BLOCK_2/3. */}
       <div className="rounded border border-orange-900/40 bg-amber-950/15 px-2 py-1 text-[9px] uppercase tracking-wider text-amber-300/90">
         ⚠ Hypothetical corridor — actual computation requires full orbit determination (Phase 2)
       </div>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="mt-1.5 w-full overflow-visible rounded border border-zinc-800 bg-slate-950"
-        role="img"
-        aria-label="Impact corridor on Earth"
-      >
-        {/* Ocean background gradient */}
-        <defs>
-          <linearGradient id="oceanGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0f172a" />
-            <stop offset="100%" stopColor="#020617" />
-          </linearGradient>
-          <radialGradient id="corridorFade">
-            <stop offset="0%" stopColor="#f97316" stopOpacity="0.65" />
-            <stop offset="60%" stopColor="#f97316" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <rect width={W} height={H} fill="url(#oceanGradient)" />
 
-        {/* Lat/lon grid */}
-        {gridLatLines.map((lat) => {
-          const [, y] = project(lat, 0);
-          return (
-            <line
-              key={`lat${lat}`}
-              x1={0}
-              x2={W}
-              y1={y}
-              y2={y}
-              stroke="#1e293b"
-              strokeWidth={lat === 0 ? 0.6 : 0.3}
-              strokeDasharray={lat === 0 ? "0" : "1.5 1.5"}
-            />
-          );
-        })}
-        {gridLonLines.map((lon) => {
-          const [x] = project(0, lon);
-          return (
-            <line
-              key={`lon${lon}`}
-              x1={x}
-              x2={x}
-              y1={0}
-              y2={H}
-              stroke="#1e293b"
-              strokeWidth={lon === 0 ? 0.6 : 0.3}
-              strokeDasharray={lon === 0 ? "0" : "1.5 1.5"}
-            />
-          );
-        })}
+      <div className="relative mt-1.5">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+          className="w-full select-none rounded border border-zinc-800 bg-slate-950"
+          role="img"
+          aria-label="Impact corridor on Earth — Equirectangular projection"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          style={{
+            cursor: dragStateRef.current ? "grabbing" : "grab",
+          }}
+        >
+          <defs>
+            <linearGradient id="oceanGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0f172a" />
+              <stop offset="100%" stopColor="#020617" />
+            </linearGradient>
+            <radialGradient id="corridorFade">
+              <stop offset="0%" stopColor="#f97316" stopOpacity="0.65" />
+              <stop offset="60%" stopColor="#f97316" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+            </radialGradient>
+            <clipPath id="mapClip">
+              <rect width={VIEWBOX_W} height={VIEWBOX_H} />
+            </clipPath>
+          </defs>
 
-        {/* YR4-style equatorial corridor band (when showYR4Corridor=true).
-            Based on ESA NEOCC publication: corridor stretched ~300° in
-            longitude across the equatorial belt (S America → Africa →
-            S Asia → Pacific). Rendered as a translucent rectangle that
-            we soften with the radial fade gradient. */}
-        {showYR4Corridor && (
-          <g opacity={0.6}>
-            <ellipse
-              cx={W / 2}
-              cy={H / 2}
-              rx={W * 0.45}
-              ry={H * 0.13}
-              fill="url(#corridorFade)"
-              stroke="#f97316"
-              strokeOpacity={0.45}
-              strokeWidth={0.6}
-              strokeDasharray="2 1.5"
-            />
-          </g>
-        )}
+          {/* Ocean background — never transformed. */}
+          <rect width={VIEWBOX_W} height={VIEWBOX_H} fill="url(#oceanGradient)" />
 
-        {/* City dots — size by log10(population) */}
-        {CITIES.map((c) => {
-          const [x, y] = project(c.latitude_deg, c.longitude_deg);
-          const size = 0.4 + Math.log10(c.metro_population / 1_000_000) * 1.2;
-          return (
+          {/* Pan/zoom group (graticule + countries + corridor + cities + damage). */}
+          <g
+            clipPath="url(#mapClip)"
+            transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}
+          >
+            {/* Graticule */}
+            {gridLatLines.map((lat) => {
+              const y = project(lat, 0).y;
+              return (
+                <line
+                  key={`lat${lat}`}
+                  x1={0}
+                  x2={VIEWBOX_W}
+                  y1={y}
+                  y2={y}
+                  stroke="#1e293b"
+                  strokeWidth={lat === 0 ? 1.6 : 0.8}
+                  strokeDasharray={lat === 0 ? "0" : "4 4"}
+                />
+              );
+            })}
+            {gridLonLines.map((lon) => {
+              const x = project(0, lon).x;
+              return (
+                <line
+                  key={`lon${lon}`}
+                  x1={x}
+                  x2={x}
+                  y1={0}
+                  y2={VIEWBOX_H}
+                  stroke="#1e293b"
+                  strokeWidth={lon === 0 ? 1.6 : 0.8}
+                  strokeDasharray={lon === 0 ? "0" : "4 4"}
+                />
+              );
+            })}
+
+            {/* Country polygons */}
+            {countryPaths.map((c) => (
+              <path
+                key={c.name}
+                d={c.d}
+                fill="#1e293b"
+                stroke="#334155"
+                strokeWidth={0.6 / zoom}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+
+            {/* YR4-style equatorial corridor band */}
+            {showYR4Corridor && (
+              <g opacity={0.6}>
+                <ellipse
+                  cx={VIEWBOX_W / 2}
+                  cy={VIEWBOX_H / 2}
+                  rx={VIEWBOX_W * 0.45}
+                  ry={VIEWBOX_H * 0.13}
+                  fill="url(#corridorFade)"
+                  stroke="#f97316"
+                  strokeOpacity={0.45}
+                  strokeWidth={1.5}
+                  strokeDasharray="6 4"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </g>
+            )}
+
+            {/* Damage circle at impact hypothesis */}
             <circle
-              key={c.name}
-              cx={x}
-              cy={y}
-              r={Math.max(size, 0.6)}
-              fill="#94a3b8"
-              opacity={0.65}
+              cx={impactX}
+              cy={impactY}
+              r={damageRadiusUnits}
+              fill="#dc2626"
+              fillOpacity={0.25}
+              stroke="#fca5a5"
+              strokeWidth={2}
+              strokeDasharray="6 3"
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle
+              cx={impactX}
+              cy={impactY}
+              r={3.5}
+              fill="#fca5a5"
+              vectorEffect="non-scaling-stroke"
+            />
+            <text
+              x={impactX + 8}
+              y={impactY - 6}
+              className="fill-red-300 font-mono uppercase tracking-wider"
+              fontSize={14}
+              style={{ fontSize: 14 / zoom + "px" }}
             >
-              <title>
-                {c.name} · {(c.metro_population / 1e6).toFixed(1)}M
-              </title>
-            </circle>
-          );
-        })}
+              impact
+            </text>
 
-        {/* Damage circle at impact point */}
-        <circle
-          cx={impactX}
-          cy={impactY}
-          r={Math.max(damageRadiusPx, 1.5)}
-          fill="#dc2626"
-          fillOpacity={0.25}
-          stroke="#fca5a5"
-          strokeWidth={0.8}
-          strokeDasharray="2 1"
-        />
-        <circle cx={impactX} cy={impactY} r={1.2} fill="#fca5a5" />
-        <text
-          x={impactX + 4}
-          y={impactY - 3}
-          className="fill-red-300 font-mono text-[6px] uppercase tracking-wider"
-        >
-          impact
-        </text>
+            {/* City dots */}
+            {TOP_CITIES.map((c) => {
+              const { x, y } = project(c.latitude_deg, c.longitude_deg);
+              const r = Math.max(
+                2,
+                1.2 + Math.log10(c.metro_population / 1_000_000) * 2.4,
+              );
+              return (
+                <circle
+                  key={c.name}
+                  cx={x}
+                  cy={y}
+                  r={r}
+                  fill="#94a3b8"
+                  opacity={0.75}
+                  stroke="#cbd5e1"
+                  strokeWidth={0.5 / zoom}
+                  vectorEffect="non-scaling-stroke"
+                  onPointerEnter={(e) => handleCityEnter(c, e)}
+                  onPointerLeave={handleCityLeave}
+                  onPointerMove={(e) => handleCityEnter(c, e)}
+                  style={{ cursor: "pointer" }}
+                />
+              );
+            })}
+          </g>
 
-        {/* Equator + prime meridian labels */}
-        <text
-          x={2}
-          y={H / 2 - 1}
-          className="fill-zinc-500 font-mono text-[5px] uppercase"
-        >
-          eq
-        </text>
-        <text
-          x={W / 2 + 2}
-          y={6}
-          className="fill-zinc-500 font-mono text-[5px] uppercase"
-        >
-          0°
-        </text>
-      </svg>
+          {/* HUD layer — never transformed */}
+          <g aria-hidden>
+            {/* Compass — top-right */}
+            <g transform={`translate(${VIEWBOX_W - 30} 24)`}>
+              <circle r={11} fill="#0f172a" stroke="#334155" strokeWidth={1} />
+              <text
+                x={0}
+                y={3}
+                textAnchor="middle"
+                className="fill-zinc-300 font-mono"
+                fontSize={11}
+                fontWeight={600}
+              >
+                N
+              </text>
+              <line x1={0} y1={-7} x2={0} y2={-13} stroke="#fca5a5" strokeWidth={1.2} />
+            </g>
+
+            {/* Equator + prime meridian labels */}
+            <text
+              x={4}
+              y={VIEWBOX_H / 2 - 4}
+              className="fill-zinc-500 font-mono uppercase"
+              fontSize={11}
+            >
+              eq
+            </text>
+            <text
+              x={VIEWBOX_W / 2 + 4}
+              y={14}
+              className="fill-zinc-500 font-mono uppercase"
+              fontSize={11}
+            >
+              0°
+            </text>
+
+            {/* Scale bar — bottom-left */}
+            <g transform={`translate(20 ${VIEWBOX_H - 24})`}>
+              <line x1={0} y1={0} x2={100} y2={0} stroke="#cbd5e1" strokeWidth={2} />
+              <line x1={0} y1={-4} x2={0} y2={4} stroke="#cbd5e1" strokeWidth={2} />
+              <line x1={100} y1={-4} x2={100} y2={4} stroke="#cbd5e1" strokeWidth={2} />
+              <text
+                x={0}
+                y={-7}
+                className="fill-zinc-300 font-mono"
+                fontSize={11}
+              >
+                {scaleLabel}
+              </text>
+            </g>
+          </g>
+        </svg>
+
+        {/* HUD overlay (HTML — for crisp text + clickable reset) */}
+        <div className="pointer-events-none absolute inset-0 flex items-start justify-start p-2">
+          <div className="pointer-events-auto flex items-center gap-1.5 rounded border border-zinc-800 bg-zinc-950/85 px-1.5 py-1 font-mono text-[9px] uppercase tracking-wider text-zinc-400">
+            <span>zoom</span>
+            <span className="text-zinc-200">{zoom.toFixed(1)}×</span>
+            <button
+              type="button"
+              onClick={reset}
+              disabled={zoom === 1 && pan.x === 0 && pan.y === 0}
+              className="ml-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Reset map view"
+            >
+              reset
+            </button>
+          </div>
+        </div>
+
+        {/* City tooltip (sibling DOM, positioned via mouse coordinates). */}
+        {tooltip && (
+          <CityTooltip
+            city={tooltip.city}
+            x={tooltip.x}
+            y={tooltip.y}
+            container={containerRef.current}
+          />
+        )}
+      </div>
+
       <p className="mt-1.5 text-[9px] leading-relaxed text-zinc-500">
-        Equirectangular projection · top-30 metro markers (size ∝ log
-        population). Damage circle from Collins et al. 2017 5-psi scaling.
+        Equirectangular projection · continent outlines from{" "}
+        <a
+          href="https://www.naturalearthdata.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-zinc-400 underline-offset-2 hover:text-zinc-300 hover:underline"
+        >
+          Natural Earth (1:110m, public domain)
+        </a>
+        {countriesError && (
+          <span className="ml-1 text-rose-400">(continent data unavailable)</span>
+        )}{" "}
+        · top-30 metro markers (size ∝ log population). Damage circle from
+        Collins et al. 2017 5-psi scaling.{" "}
         {showYR4Corridor && (
           <>
-            {" "}
             Corridor band based on{" "}
             <a
               href="https://www.esa.int/Space_Safety/Planetary_Defence/Asteroid_2024_YR4_no_longer_poses_significant_impact_risk"
@@ -254,6 +500,42 @@ export function ImpactCorridor2D({
           </>
         )}
       </p>
+    </div>
+  );
+}
+
+interface CityTooltipProps {
+  city: City1;
+  x: number;
+  y: number;
+  container: HTMLDivElement | null;
+}
+
+/** Simple absolute-positioned tooltip — keeps inside container bounds. */
+function CityTooltip({ city, x, y, container }: CityTooltipProps) {
+  const containerWidth = container?.clientWidth ?? 320;
+  const TOOLTIP_W = 180;
+  const TOOLTIP_H = 60;
+  const left =
+    x + TOOLTIP_W + 12 > containerWidth ? Math.max(0, x - TOOLTIP_W - 12) : x + 12;
+  const top = Math.max(0, y - TOOLTIP_H - 6);
+  const style: CSSProperties = { left, top };
+  return (
+    <div
+      className="pointer-events-none absolute z-10 w-[180px] rounded border border-zinc-700 bg-zinc-950/95 px-2 py-1 font-mono text-[10px] leading-snug shadow-lg"
+      style={style}
+      role="tooltip"
+    >
+      <div className="text-zinc-100">
+        {city.name}
+        <span className="ml-1 text-zinc-400">· {city.country}</span>
+      </div>
+      <div className="text-zinc-400">
+        {(city.metro_population / 1e6).toFixed(1)}M metro population
+      </div>
+      <div className="text-zinc-500">
+        {city.latitude_deg.toFixed(1)}°, {city.longitude_deg.toFixed(1)}°
+      </div>
     </div>
   );
 }
