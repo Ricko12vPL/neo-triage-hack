@@ -240,6 +240,8 @@ export function CandidateList({
                     {c.astrometric_quality_grade && (
                       <AstrometricQualityBadge
                         grade={c.astrometric_quality_grade}
+                        breakdown={c.astrometric_quality}
+                        onJumpToDetails={() => onSelect(c.trksub)}
                       />
                     )}
                     {c.expert_review ? (
