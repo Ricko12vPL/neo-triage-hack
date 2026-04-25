@@ -80,6 +80,34 @@ class SentryObjectSummary(BaseModel):
     source_url: str = "https://cneos.jpl.nasa.gov/sentry/"
 
 
+class UncertaintyBands(BaseModel):
+    """Empirical uncertainty bracket derived from the VI ensemble.
+
+    Production planetary defense reports IP/PS as point estimates AND
+    uncertainty ranges; here we extract the range directly from the per-
+    VI list JPL ships. No statistical assumptions on top — the per-VI
+    IPs are what JPL's own Monte Carlo / IOBS computed, and their min/
+    max trace the actual width of the impact possibility distribution.
+    """
+
+    n_virtual_impactors: int
+    ip_per_vi_min: float | None = None
+    ip_per_vi_max: float | None = None
+    ip_per_vi_median: float | None = None
+    ps_per_vi_min: float | None = None
+    ps_per_vi_max: float | None = None
+    sigma_median: float | None = Field(
+        default=None,
+        description=(
+            "Median of per-VI sigma (sigma_mc for MC method, sigma_lov for"
+            " IOBS/LOV). Smaller → tighter cluster around the central"
+            " trajectory. Large sigma medians flag broadly distributed"
+            " impact possibilities."
+        ),
+    )
+    method: str = "unknown"
+
+
 class SentryDetailReport(BaseModel):
     """Wrap the (summary, vis, status) tuple for a single designation lookup.
 
@@ -94,6 +122,7 @@ class SentryDetailReport(BaseModel):
     status: SentryStatus
     summary: SentryObjectSummary | None
     virtual_impactors: list[SentryVI] = Field(default_factory=list)
+    uncertainty_bands: UncertaintyBands | None = None
     removed_at_utc: str | None = None
     error_message: str | None = None
     fetched_at_utc: datetime

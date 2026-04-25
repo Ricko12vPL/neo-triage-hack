@@ -118,6 +118,32 @@ function SentryColumn({ report }: { report: CrossValidationReport["sentry"] }) {
       <Row label="PS max" value={summary.palermo_scale_max.toFixed(2)} />
       <Row label="VIs" value={summary.n_impacts.toString()} />
       <Row label="Years" value={summary.impact_year_range} />
+      {report.uncertainty_bands && report.uncertainty_bands.ip_per_vi_min != null && (
+        <UncertaintyBandsRow bands={report.uncertainty_bands} />
+      )}
+    </div>
+  );
+}
+
+function UncertaintyBandsRow({
+  bands,
+}: {
+  bands: import("../api/types").UncertaintyBands;
+}) {
+  if (bands.ip_per_vi_min == null || bands.ip_per_vi_max == null) return null;
+  const fmt = (v: number) => (v < 1e-3 ? v.toExponential(1) : v.toFixed(4));
+  return (
+    <div
+      className="mt-1 border-t border-zinc-800 pt-1"
+      title={`Empirical IP range across ${bands.n_virtual_impactors} virtual impactors. Median per-VI sigma=${bands.sigma_median?.toFixed(2) ?? "—"} (${bands.method}). Smaller sigma → tighter trajectory cluster.`}
+    >
+      <Row
+        label="VI IP range"
+        value={`${fmt(bands.ip_per_vi_min)} … ${fmt(bands.ip_per_vi_max)}`}
+      />
+      {bands.sigma_median != null && (
+        <Row label="median σ" value={bands.sigma_median.toFixed(2)} />
+      )}
     </div>
   );
 }

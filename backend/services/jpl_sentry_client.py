@@ -36,6 +36,7 @@ from backend.models.external import (
     SentryObjectSummary,
     SentryStatus,
     SentryVI,
+    UncertaintyBands,
 )
 
 JPL_SENTRY_API = "https://ssd-api.jpl.nasa.gov/sentry.api"
@@ -319,6 +320,35 @@ class JPLSentryClient:
         return report
 
 
+def _compute_uncertainty_bands(
+    vis: list[SentryVI], method: str
+) -> UncertaintyBands:
+    """Empirical bands from the VI ensemble — no statistical assumptions."""
+    if not vis:
+        return UncertaintyBands(n_virtual_impactors=0, method=method)
+
+    def _median(values: list[float]) -> float | None:
+        clean = sorted(v for v in values if v is not None)
+        if not clean:
+            return None
+        n = len(clean)
+        return clean[n // 2] if n % 2 == 1 else 0.5 * (clean[n // 2 - 1] + clean[n // 2])
+
+    ips = [v.impact_probability for v in vis if v.impact_probability is not None]
+    pss = [v.palermo_scale for v in vis if v.palermo_scale is not None]
+    sigmas = [v.sigma for v in vis if v.sigma is not None]
+    return UncertaintyBands(
+        n_virtual_impactors=len(vis),
+        ip_per_vi_min=min(ips) if ips else None,
+        ip_per_vi_max=max(ips) if ips else None,
+        ip_per_vi_median=_median(ips),
+        ps_per_vi_min=min(pss) if pss else None,
+        ps_per_vi_max=max(pss) if pss else None,
+        sigma_median=_median(sigmas),
+        method=method,
+    )
+
+
 def _build_detail_report(
     body: dict[str, Any],
     *,
@@ -371,11 +401,13 @@ def _build_detail_report(
     )
     vis_raw = body.get("data") or []
     vis = [parsed for parsed in (_parse_vi(e) for e in vis_raw) if parsed is not None]
+    bands = _compute_uncertainty_bands(vis, method=summary.method)
     return SentryDetailReport(
         designation_query=designation,
         status="IN_RISK_LIST",
         summary=summary,
         virtual_impactors=vis,
+        uncertainty_bands=bands,
         fetched_at_utc=fetched_at_utc,
     )
 

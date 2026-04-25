@@ -238,11 +238,23 @@ export interface SentryObjectSummary {
   source_url: string;
 }
 
+export interface UncertaintyBands {
+  n_virtual_impactors: number;
+  ip_per_vi_min: number | null;
+  ip_per_vi_max: number | null;
+  ip_per_vi_median: number | null;
+  ps_per_vi_min: number | null;
+  ps_per_vi_max: number | null;
+  sigma_median: number | null;
+  method: string;
+}
+
 export interface SentryDetailReport {
   designation_query: string;
   status: SentryStatus;
   summary: SentryObjectSummary | null;
   virtual_impactors: SentryVI[];
+  uncertainty_bands: UncertaintyBands | null;
   removed_at_utc: string | null;
   error_message: string | null;
   fetched_at_utc: string;

@@ -183,6 +183,21 @@ def test_object_detail_bennu_in_risk_list_with_summary_and_vis(mock_client):
     assert report.virtual_impactors[1].palermo_scale == pytest.approx(-2.06)
 
 
+def test_uncertainty_bands_computed_from_vi_ensemble(mock_client):
+    """Bands surface min/max/median IP + median sigma directly from VIs."""
+    client = JPLSentryClient(client=mock_client)
+    report = _run(client.get_object_detail("101955"))
+    bands = report.uncertainty_bands
+    assert bands is not None
+    assert bands.n_virtual_impactors == 2
+    assert bands.method == "MC"
+    # Bennu canned VIs: ip = 1e-7 and 8.5e-5
+    assert bands.ip_per_vi_min == pytest.approx(1e-7, rel=1e-3)
+    assert bands.ip_per_vi_max == pytest.approx(8.5e-5, rel=1e-3)
+    # Sigma = 2.1605, 1.8521 → median = 2.0063
+    assert bands.sigma_median == pytest.approx(2.0063, abs=0.01)
+
+
 def test_object_detail_apophis_removed(mock_client):
     client = JPLSentryClient(client=mock_client)
     report = _run(client.get_object_detail("99942 Apophis"))
