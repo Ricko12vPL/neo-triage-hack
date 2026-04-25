@@ -267,6 +267,23 @@ export interface AegisRiskEntry {
   source_url: string;
 }
 
+export interface CloseApproach {
+  designation: string;
+  julian_date: number;
+  calendar_date: string;
+  miss_distance_au: number;
+  miss_distance_min_au: number;
+  miss_distance_max_au: number;
+  relative_velocity_km_s: number;
+  velocity_infinity_km_s: number;
+  time_uncertainty_3sigma: string;
+  h: number | null;
+  body: string;
+  fetched_at_utc: string;
+  source: string;
+  source_url: string;
+}
+
 export type ConvergenceVerdict = "concur" | "diverge" | "insufficient_data";
 
 export interface CrossValidationReport {

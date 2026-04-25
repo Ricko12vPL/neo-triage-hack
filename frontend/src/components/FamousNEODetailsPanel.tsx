@@ -1,4 +1,5 @@
 import type { FamousNEO } from "../lib/famous_neos";
+import { CloseApproachTimeline } from "./CloseApproachTimeline";
 import { CrossValidationPanel } from "./CrossValidationPanel";
 
 interface Props {
@@ -137,6 +138,10 @@ export function FamousNEODetailsPanel({ neo, onClose }: Props) {
 
         <Section title="Cross-validation (production systems)">
           <CrossValidationPanel designation={neo.designation} />
+        </Section>
+
+        <Section title="Earth close approaches (JPL CAD ±50 yr)">
+          <CloseApproachTimeline designation={neo.designation} />
         </Section>
 
         <Section title="Physical">

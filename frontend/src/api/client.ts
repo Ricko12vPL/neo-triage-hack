@@ -9,6 +9,7 @@ import type {
   BriefingChunk,
   BriefingRequest,
   Candidate,
+  CloseApproach,
   CostSummary,
   CrossValidationReport,
   DataSourceReport,
@@ -71,6 +72,10 @@ export const api = {
   crossValidation: (designation: string) =>
     getJson<CrossValidationReport>(
       `/api/external/cross-validation/${encodeURIComponent(designation)}`,
+    ),
+  jplCadApproaches: (designation: string, yearsWindow = 100) =>
+    getJson<CloseApproach[]>(
+      `/api/external/jpl-cad/${encodeURIComponent(designation)}?years_window=${yearsWindow}`,
     ),
 };
 

@@ -16,11 +16,13 @@ from fastapi import APIRouter, HTTPException
 
 from backend.models.external import (
     AegisRiskEntry,
+    CloseApproach,
     CrossValidationReport,
     SentryDetailReport,
     SentryObjectSummary,
 )
 from backend.services.esa_neocc_client import get_esa_neocc_client
+from backend.services.jpl_cad_client import get_jpl_cad_client
 from backend.services.jpl_sentry_client import get_jpl_sentry_client
 
 router = APIRouter(prefix="/api/external", tags=["external"])
@@ -123,6 +125,36 @@ def _convergence_verdict(
         "concur",
         f"IP_cum agree within an order of magnitude — Sentry {sentry_ip:.2e},"
         f" Aegis {aegis_ip:.2e}.",
+    )
+
+
+@router.get(
+    "/jpl-cad/{designation:path}",
+    response_model=list[CloseApproach],
+)
+async def jpl_cad_approaches(
+    designation: str,
+    years_window: int = 100,
+    dist_max_au: float = 0.2,
+) -> list[CloseApproach]:
+    """Earth close-approach history + projection for one object.
+
+    Default window: ±50 years from today (yields 1976-2076), distance
+    cap 0.2 au (~78 lunar distances) to keep the timeline focused on
+    notable events. Cached 24h on disk.
+    """
+    if not designation or not designation.strip():
+        raise HTTPException(status_code=400, detail="designation required")
+    today = datetime.now(UTC)
+    half = max(years_window // 2, 1)
+    date_min = f"{today.year - half}-01-01"
+    date_max = f"{today.year + half}-01-01"
+    client = get_jpl_cad_client()
+    return await client.get_close_approaches(
+        designation.strip(),
+        date_min=date_min,
+        date_max=date_max,
+        dist_max_au=dist_max_au,
     )
 
 
