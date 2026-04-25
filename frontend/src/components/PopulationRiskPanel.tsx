@@ -4,6 +4,7 @@ import type {
   Candidate,
   PopulationRiskResponse,
 } from "../api/types";
+import { ImpactCorridor2D } from "./ImpactCorridor2D";
 
 /**
  * Demo-grade population-weighted impact risk display.
@@ -156,6 +157,15 @@ export function PopulationRiskPanel({ candidate }: Props) {
                 value={formatCasualties(risk.expected_casualties_unconditional)}
                 sub={`@ P(impact)=${risk.impact_probability.toExponential(2)}`}
                 tone="red"
+              />
+            </div>
+
+            <div className="mt-3">
+              <ImpactCorridor2D
+                impactLatitudeDeg={risk.impact_latitude_deg}
+                impactLongitudeDeg={risk.impact_longitude_deg}
+                damageRadiusKm={risk.severe_damage_radius_km}
+                showYR4Corridor={candidate.trksub.toUpperCase().includes("YR4")}
               />
             </div>
 
