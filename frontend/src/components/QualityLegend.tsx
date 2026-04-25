@@ -27,21 +27,21 @@ const ROWS: GradeRow[] = [
     color: "emerald",
     label: "High confidence",
     thresholds: "≥10 obs · ≥60 min · V<20 · digest2≥50",
-    context: "Orbit fit converges tightly",
+    context: "Rare on live NEOCP — orbit fits cleanly",
   },
   {
     grade: "B",
     color: "amber",
     label: "Solid",
     thresholds: "≥6 obs · ≥30 min · V<22",
-    context: "Adequate for short-arc fit",
+    context: "Most live MPC tracklets — adequate for fit",
   },
   {
     grade: "C",
     color: "orange",
     label: "Marginal",
     thresholds: "≥3 obs · ≥10 min",
-    context: "Risk of going stale on NEOCP",
+    context: "Short tracklets — pursue before they go stale",
   },
   {
     grade: "F",
@@ -122,48 +122,53 @@ export function QualityLegend() {
       </button>
 
       {expanded && (
-        <div className="mt-2.5 grid grid-cols-[18px_1fr] gap-x-3 gap-y-2.5">
+        <div className="mt-2.5 grid grid-cols-[14px_1fr] gap-x-3 gap-y-2">
           {ROWS.map((r) => (
-            <Fragment key={r.grade}>
-              <div className="flex items-start pt-0.5">
+            <Fragment
+              key={r.grade}
+            >
+              <div className="flex items-start pt-1">
                 <span
                   aria-hidden
                   className={`inline-block h-2 w-2 rounded-full ${DOT_COLOR[r.color]}`}
                 />
               </div>
-              <div className="min-w-0">
+              <div className="group min-w-0 rounded px-1 py-0.5 transition-colors hover:bg-zinc-900/40">
                 <div className="flex items-baseline gap-2">
                   <span
                     className={`font-mono text-[12px] font-bold ${TEXT_COLOR[r.color]}`}
                   >
                     {r.grade}
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider text-zinc-300">
+                  <span className="text-[10px] uppercase tracking-wider text-zinc-200">
                     {r.label}
                   </span>
                 </div>
-                <div className="mt-0.5 truncate font-mono text-[10px] text-zinc-400">
+                <div className="mt-0.5 font-mono text-[10px] tabular-nums text-zinc-400 group-hover:text-zinc-300">
                   {r.thresholds}
                 </div>
-                <div className="text-[10px] leading-snug text-zinc-500">
+                <div className="text-[10px] leading-snug text-zinc-500 group-hover:text-zinc-400">
                   {r.context}
                 </div>
               </div>
             </Fragment>
           ))}
-          <div className="col-span-2 mt-1 border-t border-zinc-900 pt-2 text-[9px] italic leading-snug text-zinc-500">
-            Find_Orb-style A/B/C/F grading ·{" "}
-            <a
-              href="https://www.projectpluto.com/find_orb.htm"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="not-italic text-zinc-400 underline-offset-2 hover:text-zinc-300 hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Bill Gray · projectpluto.com
-            </a>
-            <br />
-            Simplified — Phase 2 = full residual analysis
+          <div className="col-span-2 mt-1 border-t border-zinc-900 pt-2 text-[9px] leading-snug text-zinc-500">
+            <p className="italic">
+              Find_Orb-style A/B/C/F grading ·{" "}
+              <a
+                href="https://www.projectpluto.com/find_orb.htm"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="not-italic text-zinc-400 underline-offset-2 hover:text-zinc-300 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Bill Gray · projectpluto.com
+              </a>
+            </p>
+            <p className="mt-0.5 italic">
+              Simplified — Phase 2 = full residual analysis
+            </p>
           </div>
         </div>
       )}
