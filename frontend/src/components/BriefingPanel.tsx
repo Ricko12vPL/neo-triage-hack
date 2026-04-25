@@ -61,10 +61,14 @@ export function BriefingPanel({
   }, [reasoning, briefing, status]);
 
   return (
-    // Outer is a plain flex column — the parent <section> handles vertical
-    // overflow so we don't want an inner clip. min-h-0 keeps any nested
-    // streaming buffers shrink-friendly.
-    <div className="flex min-h-0 flex-col">
+    // Outer is plain block. The parent <section> in App.tsx handles
+    // vertical scrolling for the whole column; this panel just renders
+    // its content sequentially. Avoid flex/min-h-0 here — when this
+    // component is one of several flex children in a scroll-y-auto
+    // parent, those classes cause the outer to collapse to 0 px while
+    // its descendants render in normal flow, visually overlapping the
+    // sibling that follows.
+    <div className="block">
       {/* Streaming progress indicator */}
       <div className="relative h-px bg-zinc-800">
         {status === "streaming" && (
