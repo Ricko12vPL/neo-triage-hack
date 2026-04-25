@@ -8,24 +8,27 @@
 - **Backend:** https://neo-triage-backend-production.up.railway.app
 - **Source:** https://github.com/Ricko12vPL/neo-triage-hack
 
+![Sky View hero](docs/demo-assets/2026-04-25-features/sky-view-hero.png)
+*Sky View — Triage-Focus filter shows the 50/57 tracklets that need a decision tonight. Famous-NEO context layer (Bennu, Apophis, …) propagated from JPL Horizons elements at current epoch and verified <0.25° vs JPL OBSERVER. P21YR4A pulses red (Torino 3 hazard); halo rings around each marker encode the Opus 4.7 expert verdict (CONCUR / PARTIAL / DISSENT). Right pane: full Torino-Scale enrichment + kinetic-energy estimate + composition prior.*
+
 ---
 
 ## Why this exists
 
 When the Vera C. Rubin Observatory enters full operations (LSST, late 2025–2026), the planetary-defense community will be hit with roughly **130 Near-Earth Object candidates per night** — about 8× more than the current Minor Planet Center confirmation page posts. Roughly **8 % are genuine NEOs**; the rest are main-belt asteroids, satellites, and tracklet artifacts. Human observers cannot read every tracklet *and* still take the right shots. **neo-triage** ranks the queue, asks Opus 4.7 to second-opinion the high-stakes calls, and writes the operator the briefing they would otherwise have to write themselves.
 
-![NEO population visualised via NASA Eyes on Asteroids](docs/demo-assets/nasa-eyes-neo-population.png)
-*NASA / JPL Eyes on Asteroids — every labelled point is a catalogued NEO or mission target. The diffuse field is the main asteroid belt.*
-
 ---
 
 ## What it does
 
-### 1. Real-time MPC ingestion
+### 1. Real-time MPC ingestion + per-object source provenance
 
 The backend polls `https://www.minorplanetcenter.net/iau/NEO/neocp.txt` every **2 minutes** with a User-Agent identifying the project. The full parsed list is cached so a single high-`limit` caller can't starve a low-`limit` one. Each cycle compares the current `trksub` set against the previous one (`state.prev_trksubs`, persisted to disk) — the agent broadcasts a `new_candidate` WebSocket event **only when the MPC actually adds a tracklet**, never on cycle ticks alone.
 
-Every candidate carries a `data_source` field on the wire — `LIVE_MPC_NEOCP` for real scrapes, `DEMO_FIXTURE` for the curated demo set. The UI renders the source as an explicit badge so jurors can tell the streams apart at a glance.
+Every candidate carries a `data_source` field on the wire — `LIVE_MPC_NEOCP` for real scrapes, `DEMO_FIXTURE` for the curated demo set used in the recording. The UI renders the source as an explicit badge so jurors can tell the streams apart at a glance:
+
+![Live Feed with source badges](docs/demo-assets/2026-04-25-features/hero-live-feed.png)
+*Live Feed list. Header pills (top right) show the two streams independently — `MPC LIVE · 46 · 1m ago` (real, freshness updates every cycle) and `DEMO · 11 · static` (handcrafted fixtures including P21YR4A YR4 analogue and P21LOWRT DISSENT case). Per-row badges echo the source. Each row also carries an Opus chip — `~ OPUS·c` cached PARTIAL_CONCUR, `✓ OPUS·c` cached CONCUR, and so on.*
 
 ### 2. Hybrid Bayesian + Opus 4.7 classifier
 
@@ -63,23 +66,37 @@ The endorsement comes back as one of:
 - **PARTIAL CONCUR** — amber chip; mostly agree, here's a caveat the operator should know.
 - **DISSENT** — rose chip + violet pulsing halo on Sky View; Opus pushes back. The system flags this loudly because that's where operator attention is most needed.
 
-The complete reasoning trace + caveats array + suggested action lands in the right pane underneath the operator briefing, alongside cost / token / cache-hit telemetry.
+The full reasoning trace + caveats array + suggested action lands in the right pane underneath the operator briefing:
+
+![Expert Review Panel](docs/demo-assets/2026-04-25-features/expert-review-panel.png)
+*Opus 4.7 expert-review panel for P21YR4A. Endorsement: CONCUR. Reasoning trace: three paragraphs of physical argument from a duty-astronomer voice, citing the rate-vs-magnitude geometry, ecliptic-latitude check, arc-length caveat, and a concrete `FOLLOW UP IMMEDIATELY` action. Footer: model name, cost, fresh-vs-cached state.*
 
 ### 3. Veteran-astronomer briefing
 
-When the operator clicks a candidate, Opus 4.7 also streams a 150–250-word briefing in a deliberately dry, skeptical voice — "I've worked NEO confirmation for 15 years and been wrong publicly twice." Forbidden words list (no "exciting", no "fascinating") and a structured `## Reasoning` / `## Briefing` layout. Reasoning collapsible, briefing always visible, copy-to-Markdown / Slack / `.md` exports.
+When the operator clicks a candidate, Opus 4.7 also streams a 150–250-word briefing in a deliberately dry, skeptical voice — "I've worked NEO confirmation for 15 years and been wrong publicly twice." Forbidden words list (no "exciting", no "fascinating") and a structured `## Reasoning` / `## Briefing` layout. Reasoning collapsible, briefing always visible:
+
+![Candidate prediction + briefing](docs/demo-assets/2026-04-25-features/candidate-prediction-briefing.png)
+*PredictionCard (P(NEO) 0.986, P(PHA) 0.148, Torino-Scale 3, MAP class NEO, V 19.50, MAUNA KEA visibility) above the streamed briefing. Section dividers labelled "Operator briefing — what to do tonight · Veteran-astronomer voice · 150–250 words · streamed by Opus 4.7" so the artefact's purpose is unambiguous. The briefing here ends with "Observe tonight. Get at least a 2-hour arc, ideally 3, with astrometry to 0.3″ or better." — an actual telescope-time recommendation.*
 
 ### 4. Sky View — geocentric celestial sphere
 
-A Three.js scene drawn from real RA/Dec values straight out of the MPC scrape (verified <0.01° vs raw `neocp.txt`). Markers colour-coded by Torino scale; halo rings encode the Opus expert verdict; click a marker to reveal its on-sky motion arc with uncertainty cone. Famous-NEO context layer (Bennu, Apophis, Didymos, …) propagated from JPL Horizons elements **at current epoch JD 2461154.5** through a Newton–Raphson Kepler solver — verified within **0.25°** of JPL Horizons OBSERVER ephemerides for all 18 catalogued bodies.
+A Three.js scene drawn from real RA/Dec values straight out of the MPC scrape (verified <0.01° vs raw `neocp.txt`). Markers colour-coded by Torino scale; halo rings encode the Opus expert verdict; click a marker to reveal its on-sky motion arc with uncertainty cone. Famous-NEO context layer (Bennu, Apophis, Didymos, Ryugu, Itokawa, Eros, Toutatis, …) propagated from JPL Horizons elements **at current epoch JD 2461154.5** through a Newton–Raphson Kepler solver — verified within **0.25°** of JPL Horizons OBSERVER ephemerides for all 18 catalogued bodies.
+
+The Sky View also has a **Triage Focus** mode that hides everything not needing a decision tonight (`prob_neo >= 0.5` OR Opus-flagged action), and **NEO / MBA / COMET / ARTIFACT** filter pills in the controls bar.
 
 ### 5. Orbit View — heliocentric scene
 
 Toggle: same elements, this time as Keplerian ellipses around the Sun with planets and current positions. Lazy-loaded so the Sky tab opens instantly even on slow connections.
 
+![Orbit View — heliocentric](docs/demo-assets/2026-04-25-features/orbit-view-helio.png)
+*Sun-centred heliocentric scene. Mercury / Venus / Earth / Mars at their current positions. 18 NEO orbits as Keplerian ellipses with class-coloured halos: Apollo (red) / Aten (orange) / Amor (amber) / Comet (blue) / Main Belt (slate). Toutatis, Bennu, Apophis, Ryugu, Geographos, Eros all labelled. Rendered live from current-epoch JPL Horizons elements.*
+
 ### 6. 2024 YR4 historical replay
 
-Hour-by-hour, h+0 → h+168, with the actual MPC observations and threat indicator at each milestone. Opus re-assesses each step as a real astronomer would have at that moment. h+18 climax features a live-written global alert that bypasses cache (NN-10) — every press produces a fresh message.
+Hour-by-hour, h+0 → h+168, with the actual MPC observations and threat indicator at each milestone. Opus re-assesses each step as a real astronomer would have at that moment. h+18 climax features a live-written global alert that bypasses cache (NN-10) — every press produces a fresh message:
+
+![YR4 Replay h+18 — Torino 3 climax](docs/demo-assets/2026-04-25-features/yr4-replay-h18-loaded.png)
+*The h+18 milestone of the real 2024 YR4 event, replayed. Threat indicator 2.4 %, ~50 m diameter, December 2032 close-approach window. Left pane: ground-truth observations (28 obs, 18.0 h arc, V 20.8, rate 3.8″/min, digest2 98) + the model posterior at that moment (P(NEO) 0.97, P(PHA) 0.91, NEO PHA) + Torino Scale 3. Right pane: Claude's reasoning, then the operator briefing, then the `GENERATE ALERT NOW` button (cache-bypass — every press writes a fresh global alert).*
 
 ### 7. Managed Agent
 
