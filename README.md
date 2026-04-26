@@ -2,7 +2,7 @@
 
 > Real-time, hybrid-classifier triage for Near-Earth Object follow-up. A calibrated Bayesian ranker scores every fresh MPC NEOCP tracklet in milliseconds; **Claude Opus 4.7** acts as expert reviewer on top of that, with extended thinking visible in the UI.
 
-**Built during the [Built with Opus 4.7](https://cerebralvalley.ai/events/~/e/built-with-4-7-hackathon) hackathon** — Anthropic × Cerebral Valley, 21–28 April 2026.
+**Built during the [Built with Opus 4.7](https://cerebralvalley.ai/events/~/e/built-with-4-7-hackathon) hackathon** — Anthropic × Cerebral Valley, 21–26 April 2026.
 
 - **Demo video:** https://youtu.be/0ZP-ID-be8s
 - **Live app:** https://neo-triage-hack.vercel.app
@@ -152,7 +152,7 @@ For Sentry-tracked objects the `FamousNEOImpactCorridor` component renders an em
 
 ---
 
-## Five Claude Opus 4.7 touchpoints
+## Six Claude Opus 4.7 touchpoints
 
 | # | Where | What Opus does |
 |---|-------|----------------|
@@ -161,6 +161,7 @@ For Sentry-tracked objects the `FamousNEOImpactCorridor` component renders an em
 | 3 | **2024 YR4 historical replay** | Re-assesses each milestone (h+0 to h+168) as a real astronomer would have at that moment. |
 | 4 | **Live-written global alert** | When threat indicator crosses peak, Claude drafts the message to the follow-up network. Bypasses cache. |
 | 5 | **Managed Agent** | Autonomous loop — each new MPC tracklet gets expert-reviewed before broadcast. Reasoning lands in WebSocket payload + JSONL log. |
+| 6 | **Astrometric quality acknowledgment** | Opus reads the Find_Orb-style A/B/C/F grading alongside the candidate features and surfaces uncertainty in its `quality_acknowledgment` field — e.g. "*Grade C — 5 obs over 18 min clears the C floor but is one observation short of B; my CONCUR is conditional on a confirming epoch tonight before the arc decays.*" The grade flows into the prompt, the model adjusts the verdict's confidence accordingly. |
 
 ---
 
@@ -292,6 +293,18 @@ python scripts/verify_current_positions.py          # 18 / 18 PASS within 2°
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+
+---
+
+## Honest scope statement
+
+**neo-triage is a research-grade triage layer.** It cross-validates against production planetary defense systems but does not replace them.
+
+- **Phase 1 — current state, this hackathon.** Bayesian triage on real MPC NEOCP scrapes · Opus 4.7 expert review with `tool_use`-structured verdicts · Find_Orb-style A/B/C/F astrometric quality grading · Imminent Impactors Library with 6 historically verified pre-impact predictions · 2024 YR4 ESA-published risk corridor reproduction (~110 M people in zone) · cross-validation against JPL Sentry-II + ESA NEOCC Aegis v5 + JPL CAD · Managed Agent autonomous loop with 320+ cycles in production. Not a 24/7 service. Not running independent orbit determination yet.
+- **Phase 2 — 3–6 months.** Find_Orb integration for full residual analysis + b-plane Monte Carlo (replaces the simplified A/B/C/F proxies and the σ-sized approximate corridor). Yarkovsky thermal modelling. CIESIN GPWv4 population grid. ADES astrometry parsing for Rubin/Flyeye. NEOExchange telescope-time scheduling. Postgres + TimescaleDB.
+- **Phase 3 — 12+ months.** MOU with MPC for high-rate API access. MOU with IAWN for alert distribution. 24/7 operations with on-call rotation. Production-grade alongside JPL Sentry-II + ESA Aegis v5, contributing predictions to the federated ensemble.
+
+The roadmap is public, the gap analysis is in [`docs/research/neo-triage-gap-analysis.md`](docs/research/neo-triage-gap-analysis.md), and the production-readiness ledger is in [`docs/production-readiness-roadmap.md`](docs/production-readiness-roadmap.md). Open source, MIT licensed, no NDA. The conversation continues at the GitHub repo.
 
 ---
 
