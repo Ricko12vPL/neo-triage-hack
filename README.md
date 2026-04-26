@@ -4,7 +4,8 @@
 
 **Built during the [Built with Opus 4.7](https://cerebralvalley.ai/events/~/e/built-with-4-7-hackathon) hackathon** — Anthropic × Cerebral Valley, 21–28 April 2026.
 
-- **Live demo:** https://neo-triage-hack.vercel.app
+- **Demo video:** https://youtu.be/0ZP-ID-be8s
+- **Live app:** https://neo-triage-hack.vercel.app
 - **Backend:** https://neo-triage-backend-production.up.railway.app
 - **Source:** https://github.com/Ricko12vPL/neo-triage-hack
 
@@ -284,8 +285,7 @@ python scripts/verify_current_positions.py          # 18 / 18 PASS within 2°
 
 ## Team
 
-- **Kacper Saks** — Aerospace engineer at Airbus (planetary-defense domain + full-stack)
-- **Paweł Kulak** — Backend engineer
+- **Kacper Saks** — Aerospace engineer at Airbus (planetary-defense domain + full-stack). Solo submission.
 
 ---
 
