@@ -38,10 +38,11 @@ from backend.services.ranker import get_ranker
 
 _log = logging.getLogger(__name__)
 
-CYCLE_INTERVAL_SECONDS = 120        # 2 minutes — real-time triage (matches scraper TTL)
+CYCLE_INTERVAL_SECONDS = 300        # 5 minutes — MPC rarely updates faster (was 120; halves cycles/h)
 COST_CAP_USD = 25.0                 # stop Claude calls above this; loop continues
 MAX_BRIEFINGS_PER_CYCLE = 3         # cost control: max Opus calls per cycle
-EXPERT_TOP_K = 20                   # top-by-P(NEO) reviewed each cycle (cache-friendly)
+EXPERT_TOP_K = 5                    # top-by-P(NEO) reviewed each cycle (was 20; most low-P(NEO) rows are MBA noise)
+EXPERT_PROB_NEO_FLOOR = 0.3         # skip expert review when ranker already classes the row as MBA-noise
 EXPERT_HOURLY_COST_CAP_USD = 5.0    # hourly circuit breaker on expert review spend
 BACKOFF_STEPS_SECONDS = [60, 300, 900]  # exponential backoff on consecutive errors
 
@@ -143,7 +144,11 @@ async def agent_loop() -> None:
                     }
                 )
             else:
-                top_k_pairs = ranked[:EXPERT_TOP_K]
+                top_k_pairs = [
+                    (cand, pred)
+                    for (cand, pred) in ranked[:EXPERT_TOP_K]
+                    if (pred.prob_neo or 0.0) >= EXPERT_PROB_NEO_FLOOR
+                ]
                 if top_k_pairs:
                     try:
                         classifier = get_expert_classifier()

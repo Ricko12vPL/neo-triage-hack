@@ -10,8 +10,11 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 # Load .env before importing modules that read environment variables
 # (e.g. briefing_engine reads ANTHROPIC_API_KEY at request time).
@@ -52,17 +55,26 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         get_ranker()
         logger.info("Ranker ready.")
 
-    agent_task = asyncio.create_task(agent_loop(), name="managed-agent")
-    logger.info("Managed Agent started.")
+    # AGENT_LOOP_DISABLED=1 turns off autonomous Opus polling without redeploying
+    # code. Used between hackathon judging and post-event work to stop credit
+    # bleed; the live frontend keeps working (rank/briefing endpoints unchanged).
+    agent_disabled = os.environ.get("AGENT_LOOP_DISABLED") == "1"
+    agent_task: asyncio.Task[None] | None = None
+    if agent_disabled:
+        logger.warning("AGENT_LOOP_DISABLED=1 — Managed Agent NOT started.")
+    else:
+        agent_task = asyncio.create_task(agent_loop(), name="managed-agent")
+        logger.info("Managed Agent started.")
 
     yield
 
-    stop_event.set()
-    try:
-        await asyncio.wait_for(agent_task, timeout=10.0)
-    except TimeoutError:
-        agent_task.cancel()
-    logger.info("Managed Agent stopped.")
+    if agent_task is not None:
+        stop_event.set()
+        try:
+            await asyncio.wait_for(agent_task, timeout=10.0)
+        except TimeoutError:
+            agent_task.cancel()
+        logger.info("Managed Agent stopped.")
 
 
 def _build_cors_regex() -> str:
@@ -92,6 +104,13 @@ app = FastAPI(
     version=__version__,
     lifespan=lifespan,
 )
+
+# Per-IP rate limiter — protects the Opus-streaming briefing endpoint from
+# anonymous spam. Default 200/min on all routes is generous; the actual cost
+# guard is applied per-route via @limiter.limit() decorators (see briefing).
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 app.add_middleware(
     CORSMiddleware,
